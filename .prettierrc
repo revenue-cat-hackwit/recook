@@ -7,5 +7,7 @@
   "tabWidth": 2,
   "semi": true,
   "printWidth": 100,
-  "endOfLine": "lf"
+  "endOfLine": "lf",
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindAttributes": ["className", "class", "headerClassName"]
 }

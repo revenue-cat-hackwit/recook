@@ -7,6 +7,13 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'babel.config.js', 'metro.config.js'],
+    ignores: [
+      'dist/*',
+      '.expo/*',
+      'node_modules/*',
+      'babel.config.js',
+      'metro.config.js',
+      'tailwind.config.js',
+    ],
   },
 ]);
