@@ -1,8 +1,20 @@
 import '../global.css';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 
 export default function Layout() {
+  const [fontsLoaded] = useFonts({
+    'VisbyCF-Regular': require('../assets/fonts/VisbyCF-Regular.otf'),
+    'VisbyCF-Medium': require('../assets/fonts/VisbyCF-Medium.otf'),
+    'VisbyCF-Bold': require('../assets/fonts/VisbyCF-Bold.otf'),
+    // Tambah lainnya jika perlu
+  });
+
+  if (!fontsLoaded) {
+    return null; // Loading screen bisa ditambah nanti
+  }
+
   return (
     <Tabs>
       <Tabs.Screen

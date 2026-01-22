@@ -4,7 +4,13 @@ module.exports = {
 
   presets: [require('nativewind/preset')],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        visby: ['VisbyCF-Regular'],
+        'visby-medium': ['VisbyCF-Medium'],
+        'visby-bold': ['VisbyCF-Bold'],
+      },
+    },
   },
   plugins: [],
 };
