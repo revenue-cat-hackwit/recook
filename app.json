@@ -1,24 +1,16 @@
 {
   "expo": {
-    "name": "test",
-    "slug": "test",
+    "name": "Pirinku",
+    "slug": "pirinku",
+    "scheme": "pirinku",
     "version": "1.0.0",
-
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-
     "experiments": {
       "tsconfigPaths": true
     },
-
-    "plugins": [],
-
+    "plugins": ["expo-router"],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
     "userInterfaceStyle": "light",
-
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -26,13 +18,22 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hackwit.pirinku"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+      },
+      "package": "com.hackwit.pirinku"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "01fe9c61-ad2a-47d1-93ee-8f5a160633ac"
       }
-    }
+    },
+    "owner": "hackwit"
   }
 }

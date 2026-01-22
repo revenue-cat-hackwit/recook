@@ -1,0 +1,21 @@
+name: Production Build & Deploy
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger only on version tags like v1.0.0, v1.1.0
+
+jobs:
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  submit_android:
+    type: submit
+    params:
+      platform: android
+      profile: production
+    needs:
+      - build_android

@@ -1,0 +1,17 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: ["main", "develop"]
+
+jobs:
+  lint_and_typecheck:
+    type: run-commands
+    steps:
+      - name: Install dependencies
+        run: npm ci
+      - name: Run lint
+        run: npm run lint
+      - name: Run Typecheck
+        run: npx tsc --noEmit
