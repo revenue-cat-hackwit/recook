@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Message {
