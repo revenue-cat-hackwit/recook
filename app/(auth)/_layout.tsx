@@ -6,7 +6,7 @@ export default function AuthLayout() {
   const session = useAuthStore((state) => state.session);
 
   if (session) {
-    return <Redirect href="/home" />;
+    return <Redirect href="/feed" />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;
