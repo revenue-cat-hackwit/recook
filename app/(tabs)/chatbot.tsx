@@ -1,29 +1,18 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, FlatList, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
-import { Ionicons } from '@expo/vector-icons';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string | { type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }[];
-  timestamp: Date;
-}
+import { Message } from '@/lib/types';
+import { ChatMessage } from '@/components/chat/ChatMessage';
+import { ChatInput } from '@/components/chat/ChatInput';
 
 export default function Chatbot() {
+  const flatListRef = useRef<FlatList>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Halo! Saya AI asisten untuk Pirinku. Apa yang bisa saya bantu hari ini?',
+      content:
+        'Halo! Saya Chef Bot Pirinku 👨‍🍳. Ada bahan apa di kulkasmu hari ini? Atau mau ide masak apa?',
       timestamp: new Date(),
     },
   ]);
@@ -57,9 +46,7 @@ export default function Chatbot() {
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       const aiMessage: Message = {
         role: 'assistant',
@@ -68,9 +55,9 @@ export default function Chatbot() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling AI:', error);
-      Alert.alert('Error', 'Gagal mengirim pesan. Coba lagi.');
+      Alert.alert('Error', 'Maaf, Chef Bot sedang sibuk. Coba lagi nanti ya!');
     } finally {
       setLoading(false);
     }
@@ -79,24 +66,29 @@ export default function Chatbot() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Izinkan akses galeri untuk upload gambar.');
+      Alert.alert(
+        'Izin Ditolak',
+        'Chef Bot butuh izin akses galeri untuk melihat bahan masakanmu.',
+      );
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
+      quality: 0.7,
       base64: true,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets && result.assets[0].base64) {
       const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
       const userMessage: Message = {
         role: 'user',
         content: [
-          { type: 'text', text: inputText.trim() || 'Lihat gambar ini' },
+          {
+            type: 'text',
+            text: inputText.trim() || 'Tolong buatkan resep dari bahan di gambar ini',
+          },
           { type: 'image_url', image_url: { url: base64 } },
         ],
         timestamp: new Date(),
@@ -120,9 +112,7 @@ export default function Chatbot() {
           },
         });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         const aiMessage: Message = {
           role: 'assistant',
@@ -131,80 +121,34 @@ export default function Chatbot() {
         };
 
         setMessages((prev) => [...prev, aiMessage]);
-      } catch (error) {
-        console.error('Error calling AI:', error);
-        Alert.alert('Error', 'Gagal menganalisis gambar. Coba lagi.');
+      } catch (error: any) {
+        console.error('Error analyzing image:', error);
+        Alert.alert('Error', 'Gagal menganalisis gambar. Pastikan koneksi internet lancar.');
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.role === 'user';
-    return (
-      <View
-        className={`mb-4 max-w-[80%] rounded-lg p-3 ${isUser ? 'self-end bg-blue-500' : 'self-start bg-gray-200'}`}
-      >
-        {typeof item.content === 'string' ? (
-          <Text className={isUser ? 'text-white' : 'text-black'}>{item.content}</Text>
-        ) : (
-          <View>
-            {item.content.map((part, index) => (
-              <View key={index}>
-                {part.type === 'text' && (
-                  <Text className={isUser ? 'text-white' : 'text-black'}>{part.text}</Text>
-                )}
-                {part.type === 'image_url' && part.image_url && (
-                  <Image source={{ uri: part.image_url.url }} className="mt-2 h-32 w-32 rounded" />
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-        <Text className={`mt-1 text-xs ${isUser ? 'text-blue-200' : 'text-gray-500'}`}>
-          {item.timestamp.toLocaleTimeString()}
-        </Text>
-      </View>
-    );
-  };
-
   return (
     <View className="flex-1 bg-white">
       <FlatList
+        ref={flatListRef}
         data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item, index) => index.toString()}
-        className="flex-1 p-4"
-        inverted={false}
-        onContentSizeChange={() => {}}
-        onLayout={() => {}}
+        renderItem={({ item }) => <ChatMessage message={item} />}
+        keyExtractor={(_, index) => index.toString()}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
-      {loading && (
-        <View className="flex-row items-center p-4">
-          <ActivityIndicator size="small" color="#3b82f6" />
-          <Text className="ml-2 text-gray-600">AI sedang berpikir...</Text>
-        </View>
-      )}
-      <View className="flex-row items-center border-t border-gray-200 p-4">
-        <TouchableOpacity onPress={pickImage} disabled={loading} className="mr-2 p-2">
-          <Ionicons name="image" size={24} color={loading ? '#ccc' : '#3b82f6'} />
-        </TouchableOpacity>
-        <TextInput
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Ketik pesan atau upload gambar..."
-          className="mr-2 flex-1 rounded-lg border border-gray-300 px-3 py-2"
-          multiline
-        />
-        <TouchableOpacity
-          onPress={sendMessage}
-          disabled={loading}
-          className={`rounded-lg p-2 ${loading ? 'bg-gray-300' : 'bg-blue-500'}`}
-        >
-          <Ionicons name="send" size={20} color="white" />
-        </TouchableOpacity>
-      </View>
+
+      <ChatInput
+        value={inputText}
+        onChangeText={setInputText}
+        onSend={sendMessage}
+        onPickImage={pickImage}
+        loading={loading}
+      />
     </View>
   );
 }

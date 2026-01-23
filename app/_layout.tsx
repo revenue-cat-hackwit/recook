@@ -1,8 +1,7 @@
 import { useAuthStore } from '@/lib/store/authStore';
 import { supabase } from '@/lib/supabase';
-import { useFonts } from 'expo-font';
 import * as Linking from 'expo-linking';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import '../global.css';
@@ -12,32 +11,46 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const setCredentials = useAuthStore((state) => state.setCredentials);
   const setCredentialsFromUrl = useAuthStore((state) => state.setCredentialsFromUrl);
-  const [fontsLoaded, error] = useFonts({
-    'VisbyCF-Regular': require('../assets/fonts/VisbyCF-Regular.otf'),
-    'VisbyCF-Medium': require('../assets/fonts/VisbyCF-Medium.otf'),
-    'VisbyCF-DemiBold': require('../assets/fonts/VisbyCF-DemiBold.otf'),
-  });
+  const session = useAuthStore((state) => state.session);
+  const segments = useSegments();
+  const router = useRouter();
+
+  // Font loading removed (handled by native config plugin)
 
   useEffect(() => {
-    if (fontsLoaded || error) {
-      SplashScreen.hideAsync();
+    SplashScreen.hideAsync();
+  }, []);
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (session && inAuthGroup) {
+      // User is signed in, redirect to home/feed
+      router.replace('/(tabs)/feed');
+    } else if (!session && !inAuthGroup) {
+      // User is not signed in, redirect to sign-in
+      if (segments[0] === '(tabs)') {
+        router.replace('/(auth)/sign-in');
+      }
     }
-  }, [fontsLoaded, error]);
+  }, [session, segments]);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      //NOTE - Handle auth state on app launch
-      if (event === 'INITIAL_SESSION') {
-        const user = session?.user || null;
-        setCredentials(session, user);
-      }
+      console.log('Supabase Auth Event:', event);
 
-      //NOTE - Handle user updates (e.g., password reset)
-      if (event === 'USER_UPDATED') {
+      if (
+        event === 'INITIAL_SESSION' ||
+        event === 'SIGNED_IN' ||
+        event === 'USER_UPDATED' ||
+        event === 'TOKEN_REFRESHED'
+      ) {
         const user = session?.user || null;
         setCredentials(session, user);
+      } else if (event === 'SIGNED_OUT') {
+        setCredentials(null, null);
       }
     });
 
@@ -77,8 +90,5 @@ export default function RootLayout() {
     }
   };
 
-  if (!fontsLoaded && !error) {
-    return null;
-  }
   return <Stack screenOptions={{ headerShown: false }} />;
 }

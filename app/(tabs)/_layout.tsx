@@ -12,6 +12,12 @@ export default function TabsLayout() {
   return (
     <Tabs screenOptions={{ tabBarActiveTintColor: '#FF6B6B', tabBarInactiveTintColor: 'gray' }}>
       <Tabs.Screen
+        name="index"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="feed"
         options={{
           title: 'Feed',

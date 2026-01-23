@@ -8,7 +8,7 @@ module.exports = {
       fontFamily: {
         visby: ['VisbyCF-Regular'],
         'visby-medium': ['VisbyCF-Medium'],
-        'visby-bold': ['VisbyCF-Bold'],
+        'visby-bold': ['VisbyCF-DemiBold'],
       },
     },
   },
