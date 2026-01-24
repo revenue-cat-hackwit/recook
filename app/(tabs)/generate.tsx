@@ -11,7 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Recipe } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,13 +55,27 @@ export default function GenerateScreen() {
 
     try {
       console.log('Generating recipe from:', videoUrl);
-      const { data, error } = await supabase.functions.invoke('generate-recipe', {
-        body: {
-          videoUrl: videoUrl,
+
+      // FORCE USE ANON KEY
+      const token = supabaseAnonKey;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/generate-recipe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          videoUrl: videoUrl,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Function failed with status ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
 
       console.log('Recipe Data:', data);
 

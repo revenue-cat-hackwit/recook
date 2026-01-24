@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Message } from '@/lib/types';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -84,20 +84,38 @@ export default function Chatbot() {
 
       console.log('[Chatbot] Sending payload:', { messages: apiMessages });
 
-      const { data, error } = await supabase.functions.invoke('ai-assistant', {
-        body: {
+      // WORKAROUND: Force Use Anon Key because User Token (ES256) is rejected by Edge Function (HS256 default)
+      // We will send user_id in body if needed for tracking
+      const token = supabaseAnonKey;
+
+      const isAnon = token === supabaseAnonKey;
+      console.log(`[DEBUG] Target URL: ${supabaseUrl}/functions/v1/ai-assistant`);
+
+      console.log(`[DEBUG] Anon Key Prefix: ${supabaseAnonKey.substring(0, 15)}...`);
+      console.log(`[DEBUG] Token Used: ${isAnon ? 'ANON KEY' : 'USER TOKEN'}`);
+      console.log(`[DEBUG] Token Prefix: ${token?.substring(0, 15)}...`);
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // EXPLICIT HEADER
+        },
+        body: JSON.stringify({
           messages: apiMessages,
           max_tokens: 1000,
           temperature: 0.7,
-        },
+        }),
       });
 
-      console.log('[Chatbot] Raw Response:', data);
-
-      if (error) {
-        console.error('[Chatbot] Supabase Function Error:', error);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Function failed with status ${response.status}: ${errorText}`);
       }
+
+      const data = await response.json();
+
+      console.log('[Chatbot] Raw Response:', data);
 
       // Safety check for response structure
       const aiResponseContent =
@@ -159,15 +177,28 @@ export default function Chatbot() {
           content: msg.content,
         }));
 
-        const { data, error } = await supabase.functions.invoke('ai-assistant', {
-          body: {
+        // FORCE USE ANON KEY (Workaround for ES256 Token issue)
+        const token = supabaseAnonKey;
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
             messages: apiMessages,
             max_tokens: 1000,
             temperature: 0.7,
-          },
+          }),
         });
 
-        if (error) throw error;
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Function failed with status ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
 
         const aiMessage: Message = {
           role: 'assistant',

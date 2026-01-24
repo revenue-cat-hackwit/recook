@@ -21,16 +21,15 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-export const supabase = createClient(
-  process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
-  {
-    auth: {
-      // FIXME : Use AsyncStorage beacause Expo Secure Store has issues if the data size is large
-      storage: Platform.OS === 'web' ? AsyncStorage : ExpoSecureStoreAdapter,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
+export const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    // FIXME : Use AsyncStorage beacause Expo Secure Store has issues if the data size is large
+    storage: Platform.OS === 'web' ? AsyncStorage : ExpoSecureStoreAdapter,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
   },
-);
+});

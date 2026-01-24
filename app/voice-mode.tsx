@@ -11,24 +11,53 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Audio } from 'expo-av';
-import { supabase } from '@/lib/supabase';
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  AudioModule,
+  RecordingPresets,
+  IOSOutputFormat,
+  AudioQuality,
+} from 'expo-audio';
+import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase';
 
 export default function VoiceModeScreen() {
   const router = useRouter();
-  const [recording, setRecording] = useState<Audio.Recording | undefined>(undefined);
-  const [permissionResponse, requestPermission] = Audio.usePermissions();
+
+  // Configuration for Novita AI (Requires WAV or MP3)
+  const recordingOptions = {
+    ...RecordingPresets.HIGH_QUALITY,
+    ios: {
+      extension: '.wav',
+      outputFormat: IOSOutputFormat.LINEARPCM,
+      audioQuality: AudioQuality.MAX,
+      sampleRate: 44100,
+      numberOfChannels: 1,
+      bitRate: 128000,
+      linearPCMBitDepth: 16,
+      linearPCMIsBigEndian: false,
+      linearPCMIsFloat: false,
+    },
+  };
+
+  const audioRecorder = useAudioRecorder(recordingOptions, (status) => {
+    // Status updates often not needed if using useAudioRecorderState
+  });
+
+  const audioState = useAudioRecorderState(audioRecorder);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Animation Value for Pulse Effect
   const imageScale = useSharedValue(1);
   const opacity = useSharedValue(0.8);
 
+  const isRecording = audioState.isRecording;
+
   useEffect(() => {
     // Breathing animation loop (always active for ambience, or intensify when recording)
     imageScale.value = withRepeat(
-      withTiming(recording ? 1.2 : 1.05, {
-        duration: recording ? 800 : 2000,
+      withTiming(isRecording ? 1.2 : 1.05, {
+        duration: isRecording ? 800 : 2000,
         easing: Easing.inOut(Easing.ease),
       }),
       -1,
@@ -39,7 +68,7 @@ export default function VoiceModeScreen() {
       -1,
       true,
     );
-  }, [recording]);
+  }, [isRecording]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -48,24 +77,21 @@ export default function VoiceModeScreen() {
     };
   });
 
+  const requestPermission = async () => {
+    const status = await AudioModule.requestRecordingPermissionsAsync();
+    if (!status.granted) {
+      Alert.alert('Izin Ditolak', 'Mohon izinkan akses mikrofon untuk mendikte.');
+    }
+  };
+
   async function startRecording() {
     try {
-      if (permissionResponse?.status !== 'granted') {
-        console.log('Requesting permission..');
+      const perms = await AudioModule.getRecordingPermissionsAsync();
+      if (!perms.granted) {
         await requestPermission();
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      console.log('Starting recording..');
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
-      );
-      setRecording(recording);
-      console.log('Recording started');
+      audioRecorder.record();
     } catch (err) {
       console.error('Failed to start recording', err);
       Alert.alert('Error', 'Gagal memulai perekaman suara.');
@@ -73,57 +99,89 @@ export default function VoiceModeScreen() {
   }
 
   async function stopRecording() {
-    console.log('Stopping recording..');
-    setRecording(undefined);
-    await recording?.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-    });
+    if (!audioState.isRecording) return;
 
-    const uri = recording?.getURI();
-    console.log('Recording stopped and stored at', uri);
+    // setIsProcessing(true); // Don't set here, wait until upload actually starts
+    try {
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      console.log('Recording stopped and stored at', uri);
 
-    if (uri) {
-      handleUpload(uri);
+      if (uri) {
+        handleUpload(uri);
+      }
+    } catch (e) {
+      console.error('Stop error', e);
     }
   }
 
   const handleUpload = async (uri: string) => {
     setIsProcessing(true);
     try {
+      // Determine file type based on extension
+      const fileExtension = uri.split('.').pop()?.toLowerCase();
+      let mimeType = 'audio/mp4'; // Default to m4a
+      let fileName = `recording.${fileExtension}`;
+
+      if (fileExtension === 'wav') {
+        mimeType = 'audio/wav';
+      } else if (fileExtension === 'mp3') {
+        mimeType = 'audio/mpeg';
+      } else if (fileExtension === 'm4a') {
+        mimeType = 'audio/mp4';
+      }
+
       const formData = new FormData();
       formData.append('audio', {
         uri,
-        name: 'recording.m4a',
-        type: 'audio/m4a',
+        name: fileName,
+        type: mimeType,
       } as any);
 
-      console.log('Sending audio to backend...');
-      const { data, error } = await supabase.functions.invoke('voice-processor', {
+      console.log('Sending audio via manual fetch...');
+
+      // FORCE USE ANON KEY to avoid ES256 token issues
+      const token = supabaseAnonKey;
+
+      if (!token) {
+        throw new Error('No Auth Token available');
+      }
+
+      const FUNCTION_URL = `${supabaseUrl}/functions/v1/voice-processor`;
+      console.log(`Posting to ${FUNCTION_URL}`);
+
+      const response = await fetch(FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Let fetch generate multipart/form-data boundary automatically
+        },
         body: formData,
       });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        let errorMsg = `Server Error ${response.status}`;
+        try {
+          const errText = await response.text();
+          errorMsg += `: ${errText}`;
+        } catch (e) {
+          // Ignore parsing error
+        }
+        throw new Error(errorMsg);
       }
+
+      const data = await response.json();
 
       console.log('Voice Processed:', data);
       const { transcript, reply, audio } = data;
 
-      // Show Text Result
       Alert.alert('Chef Menjawab', `🗣️ Kamu: "${transcript}"\n\n👨‍🍳 Chef: "${reply}"`);
 
-      // Play Audio Response
-      if (audio) {
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: `data:audio/mp3;base64,${audio}` },
-          { shouldPlay: true },
-        );
-        // sound.playAsync(); // createAsync with shouldPlay:true already plays it
-      }
+      // TODO: Playback audio response using expo-audio player if needed
+      // For now, text is displayed.
     } catch (err: any) {
       console.error('Upload failed', err);
-      Alert.alert('Error', 'Gagal memproses suara: ' + (err.message || 'Unknown error'));
+      Alert.alert('Error', `Gagal memproses suara: ${err.message || 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
     }
@@ -143,7 +201,7 @@ export default function VoiceModeScreen() {
       {/* Main Content */}
       <View className="-mt-20 flex-1 items-center justify-center">
         <Text className="mb-12 px-10 text-center font-visby text-lg text-gray-600">
-          {recording
+          {isRecording
             ? 'Saya mendengarkan...'
             : isProcessing
               ? 'Sedang memproses...'
@@ -179,16 +237,16 @@ export default function VoiceModeScreen() {
 
         {/* Big Mic Button with Pulse Ring */}
         <View className="items-center justify-center">
-          {recording && (
+          {isRecording && (
             <View className="absolute h-24 w-24 scale-125 items-center justify-center rounded-full bg-red-100 opacity-50" />
           )}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={recording ? stopRecording : startRecording}
+            onPress={isRecording ? stopRecording : startRecording}
             disabled={isProcessing}
-            className={`h-20 w-20 items-center justify-center rounded-full shadow-lg ${recording ? 'bg-red-500 shadow-red-200' : 'bg-[#5FD08F] shadow-green-200'}`}
+            className={`h-20 w-20 items-center justify-center rounded-full shadow-lg ${isRecording ? 'bg-red-500 shadow-red-200' : 'bg-[#5FD08F] shadow-green-200'}`}
           >
-            <Ionicons name={recording ? 'stop' : 'mic'} size={32} color="white" />
+            <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color="white" />
           </TouchableOpacity>
         </View>
 
