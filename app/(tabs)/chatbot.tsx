@@ -147,14 +147,21 @@ export default function Chatbot() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // Only Images allowed
       allowsEditing: true,
       quality: 0.7,
-      base64: true,
+      base64: true, // For images
     });
 
-    if (!result.canceled && result.assets && result.assets[0].base64) {
-      const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const asset = result.assets[0];
+
+      // For images, use base64
+      if (!asset.base64) {
+        Alert.alert('Error', 'Gagal memproses gambar. Coba lagi.');
+        return;
+      }
+      const base64 = `data:image/jpeg;base64,${asset.base64}`;
       const userMessage: Message = {
         role: 'user',
         content: [

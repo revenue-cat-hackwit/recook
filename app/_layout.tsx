@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
@@ -91,10 +92,12 @@ export default function RootLayout() {
   };
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
-    </Stack>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+      </Stack>
+    </GestureHandlerRootView>
   );
 }

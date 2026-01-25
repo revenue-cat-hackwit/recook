@@ -1,13 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Redirect, Tabs } from 'expo-router';
-import React from 'react';
+import { useSettingsStore } from '@/lib/store/settingsStore';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 
 export default function TabsLayout() {
   const session = useAuthStore((state) => state.session);
+  const loadLanguage = useSettingsStore((state) => state.loadLanguage);
+
+  useEffect(() => {
+    loadLanguage();
+  }, []);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!session) {
+      router.replace('/');
+    }
+  }, [session]);
 
   if (!session) {
-    return <Redirect href="/" />;
+    return null;
   }
   return (
     <Tabs
@@ -45,10 +59,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="planner"
+        name="recipes"
         options={{
-          title: 'Planner',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+          title: 'Resepku',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="book" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

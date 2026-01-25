@@ -7,23 +7,26 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Modal,
-  FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Recipe } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 
 const RECIPES_STORAGE_KEY = 'pirinku_local_recipes_v1';
 
 export default function GenerateScreen() {
-  const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Sedang Menganalisa...'); // NEW
+  const [videoUrl, setVideoUrl] = useState('');
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+
+  // File Upload State
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadSavedRecipes();
@@ -40,74 +43,159 @@ export default function GenerateScreen() {
     }
   };
 
+  const handlePickVideo = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert('Izin Ditolak', 'Kamu perlu memberikan izin akses galeri untuk memilih video.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      allowsEditing: true, // Only for trimming
+      quality: 0.5,
+    });
+
+    if (!result.canceled && result.assets[0].uri) {
+      const asset = result.assets[0];
+
+      // Limit 3 Menit (180 Detik)
+      if (asset.duration && asset.duration > 180000) {
+        Alert.alert(
+          'Video Terlalu Panjang',
+          'Maksimal durasi video adalah 3 menit. Silakan potong video Anda dulu.',
+        );
+        return;
+      }
+
+      handleUpload(asset.uri);
+    }
+  };
+
+  const handleUpload = async (uri: string) => {
+    setUploading(true);
+    setVideoUrl(''); // Clear text input if uploading
+    try {
+      const ext = uri.split('.').pop()?.toLowerCase() || 'mov';
+      const fileName = `${Date.now()}.${ext}`;
+      const filePath = `uploads/${fileName}`;
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const { data, error } = await supabase.storage
+        .from('videos') // Ensure 'videos' bucket exists and is public!
+        .upload(filePath, blob, {
+          contentType: `video/${ext}`,
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('videos').getPublicUrl(filePath);
+
+      setUploadedFileUrl(publicUrl);
+      Alert.alert('Sukses', "Video berhasil diupload! Klik 'Buat Resep' sekarang.");
+    } catch (error: any) {
+      Alert.alert('Upload Gagal', error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!videoUrl.trim()) {
+    // Determine source: Text Link OR Uploaded File
+    const targetUrl = uploadedFileUrl || videoUrl.trim();
+
+    if (!targetUrl) {
       Alert.alert(
-        'Link Kosong',
-        'Mohon setidaknya masukkan link video yang ingin dibuatkan resepnya.',
+        'Input Kosong',
+        'Tempel link video (TikTok/IG/YouTube) atau upload video sendiri.',
       );
       return;
     }
 
     setLoading(true);
+    setLoadingMessage('Mengambil Video...'); // Initial message
     setCurrentRecipe(null);
-    setShowHistory(false);
+
+    // Dynamic loading messages
+    const messages = [
+      'Menganalisa Video...',
+      'Chef Sedang Menonton...',
+      'Video sedang diproses...',
+      'Sedang Menulis Resep...',
+      'Hampir Selesai...',
+    ];
+    let msgIndex = 0;
+    const interval = setInterval(() => {
+      if (msgIndex < messages.length) {
+        setLoadingMessage(messages[msgIndex]);
+        msgIndex++;
+      }
+    }, 4000); // Change every 4 seconds
 
     try {
-      console.log('Generating recipe from:', videoUrl);
-
-      // FORCE USE ANON KEY
-      const token = supabaseAnonKey;
+      console.log('Sending to AI, URL:', targetUrl);
 
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify({
-          videoUrl: videoUrl,
+          videoUrl: targetUrl,
         }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Function failed with status ${response.status}: ${errorText}`);
+        throw new Error(`AI processing failed: ${errorText}`);
       }
 
       const data = await response.json();
-
       console.log('Recipe Data:', data);
 
       if (data.success && data.data) {
         const newRecipe: Recipe = {
           ...data.data,
-          sourceUrl: videoUrl,
+          sourceUrl: targetUrl,
           id: Date.now().toString(),
           createdAt: new Date().toISOString(),
         };
         setCurrentRecipe(newRecipe);
+        handleSaveRecipe(newRecipe);
+
+        // Reset inputs on success
+        setUploadedFileUrl(null);
+        setVideoUrl('');
       } else {
-        Alert.alert('Gagal', 'AI tidak dapat menghasilkan resep valid dari link tersebut.');
+        throw new Error('AI tidak mengembalikan data resep yang valid.');
       }
     } catch (error: any) {
-      console.error('Error generating recipe:', error);
-      Alert.alert('Error', 'Gagal menghubungi Chef Bot. Pastikan koneksi lancar.');
+      console.error('Error flow:', error);
+      Alert.alert('Gagal', error.message || 'Terjadi kesalahan saat memproses video.');
     } finally {
+      clearInterval(interval); // Stop the message cycle
       setLoading(false);
+      setLoadingMessage('Sedang Menganalisa...'); // Reset default
     }
   };
 
-  const handleSaveRecipe = async () => {
-    if (!currentRecipe) return;
-
+  const handleSaveRecipe = async (recipe: Recipe) => {
     try {
-      const newHistory = [currentRecipe, ...savedRecipes];
+      const exists = savedRecipes.find((r) => r.id === recipe.id);
+      if (exists) return;
+
+      const newHistory = [recipe, ...savedRecipes];
       setSavedRecipes(newHistory);
       await AsyncStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(newHistory));
-      Alert.alert('Tersimpan!', 'Resep berhasil disimpan di HP kamu.');
     } catch (e) {
-      Alert.alert('Error', 'Gagal menyimpan resep.');
+      console.error('Save error', e);
     }
   };
 
@@ -115,6 +203,10 @@ export default function GenerateScreen() {
     const newHistory = savedRecipes.filter((r) => r.id !== id);
     setSavedRecipes(newHistory);
     await AsyncStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(newHistory));
+  };
+
+  const resetUpload = () => {
+    setUploadedFileUrl(null);
   };
 
   const renderRecipeCard = (recipe: Recipe, isBrief = false) => (
@@ -127,13 +219,13 @@ export default function GenerateScreen() {
           <Text className="mb-4 font-visby text-sm text-gray-500">{recipe.description}</Text>
         </View>
         <TouchableOpacity
-          onPress={() => (isBrief ? setCurrentRecipe(recipe) : handleSaveRecipe())}
+          onPress={() => (isBrief ? setCurrentRecipe(recipe) : null)}
           className="rounded-full bg-gray-50 p-2"
         >
           <Ionicons
-            name={isBrief ? 'chevron-forward' : 'bookmark-outline'}
+            name={isBrief ? 'chevron-forward' : 'checkmark-circle'}
             size={22}
-            color="#FF6B6B"
+            color={isBrief ? '#FF6B6B' : '#4CAF50'}
           />
         </TouchableOpacity>
       </View>
@@ -210,62 +302,88 @@ export default function GenerateScreen() {
       <ScrollView className="flex-1 px-4 pt-4">
         {/* Header */}
         <View className="mb-6">
-          <Text className="font-visby-bold text-3xl text-gray-900">Magic Kitchen ✨</Text>
+          <Text className="font-visby-bold text-3xl text-gray-900">Video Chef 📹</Text>
           <Text className="mt-1 font-visby text-base text-gray-500">
-            Ubah video TikTok/Shorts jadi resep instan.
+            Paste link TikTok/YouTube atau upload videomu!
           </Text>
         </View>
 
         {/* Input Card */}
         <View className="mb-6 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          <Text className="mb-2 font-visby-bold text-gray-700">Link Video Masak</Text>
-          <View className="mb-4 flex-row items-center rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-            <Ionicons name="link" size={20} color="#999" style={{ marginRight: 10 }} />
+          {/* Opsi 1: Link Input (Disabled if uploaded file present) */}
+          <View
+            className={`mb-4 rounded-xl bg-gray-50 px-4 py-3 ${uploadedFileUrl ? 'opacity-50' : ''}`}
+          >
             <TextInput
-              className="flex-1 font-visby text-base text-gray-900"
-              placeholder="https://tiktok.com/..."
-              placeholderTextColor="#ccc"
+              placeholder="Paste link video masak di sini..."
+              placeholderTextColor="#9CA3AF"
               value={videoUrl}
               onChangeText={setVideoUrl}
-              autoCapitalize="none"
+              editable={!uploadedFileUrl}
+              className="font-visby text-base text-gray-900"
             />
-            {videoUrl.length > 0 && (
-              <TouchableOpacity onPress={() => setVideoUrl('')}>
-                <Ionicons name="close-circle" size={18} color="#ccc" />
-              </TouchableOpacity>
-            )}
           </View>
 
+          <Text className="mb-4 text-center text-xs text-gray-400">ATAU</Text>
+
+          {/* Opsi 2: Upload Button */}
+          <TouchableOpacity
+            onPress={uploadedFileUrl ? resetUpload : handlePickVideo}
+            disabled={uploading}
+            className={`mb-6 flex-row items-center justify-center rounded-xl border border-gray-200 py-3 ${uploadedFileUrl ? 'border-green-200 bg-green-50' : 'bg-white'}`}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#666" size="small" />
+            ) : uploadedFileUrl ? (
+              <>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color="green"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="font-visby-bold text-green-700">
+                  Video Terupload (Klik untuk Batal)
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={20}
+                  color="#666"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="font-visby-bold text-gray-600">Upload Video Sendiri</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Button Generate */}
           <TouchableOpacity
             onPress={handleGenerate}
             disabled={loading}
             className={`w-full flex-row items-center justify-center rounded-xl py-4 ${loading ? 'bg-gray-300' : 'bg-red-500 shadow-lg shadow-red-200'}`}
           >
             {loading ? (
-              <ActivityIndicator color="white" />
+              <>
+                <ActivityIndicator color="white" className="mr-2" />
+                <Text className="font-visby-bold text-lg text-white">{loadingMessage}</Text>
+              </>
             ) : (
               <>
                 <Ionicons name="sparkles" size={20} color="white" style={{ marginRight: 8 }} />
-                <Text className="font-visby-bold text-lg text-white">Generate Resep</Text>
+                <Text className="font-visby-bold text-lg text-white">Buat Resep Sekarang</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Toggle History */}
-        {!currentRecipe && savedRecipes.length > 0 && (
-          <View className="mb-4 flex-row items-center justify-between">
-            <Text className="font-visby-bold text-lg text-gray-900">
-              Buku Resep Saya ({savedRecipes.length})
-            </Text>
-          </View>
-        )}
-
         {/* Result Area */}
         {currentRecipe ? (
           <View>
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-visby-bold text-xl text-gray-900">Hasil Generate</Text>
+              <Text className="font-visby-bold text-xl text-gray-900">Hasil Analisa AI</Text>
               <TouchableOpacity onPress={() => setCurrentRecipe(null)}>
                 <Text className="font-visby text-red-500">Tutup</Text>
               </TouchableOpacity>
@@ -273,16 +391,16 @@ export default function GenerateScreen() {
             {renderRecipeCard(currentRecipe)}
           </View>
         ) : (
-          <View>
-            {savedRecipes.map((item) => (
-              <View key={item.id}>
-                {/* Render saved items as brief cards. Clicking them sets currentRecipe */}
-                <TouchableOpacity onPress={() => setCurrentRecipe(item)}>
+          savedRecipes.length > 0 && (
+            <View>
+              <Text className="mb-3 font-visby-bold text-lg text-gray-900">Riwayat Resep</Text>
+              {savedRecipes.map((item) => (
+                <TouchableOpacity key={item.id} onPress={() => setCurrentRecipe(item)}>
                   {renderRecipeCard(item, true)}
                 </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )
         )}
 
         <View className="h-24" />

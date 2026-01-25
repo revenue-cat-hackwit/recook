@@ -1,5 +1,7 @@
-import React from 'react';
-import { View, Text, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { Message } from '@/lib/types';
 
@@ -48,6 +50,17 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
                   className="mt-2 h-40 w-full rounded-lg bg-gray-200"
                   resizeMode="cover"
                 />
+              )}
+              {part.type === 'video_url' && part.video_url && (
+                <View className="mt-2 h-48 w-full overflow-hidden rounded-lg bg-gray-900">
+                  <Video
+                    source={{ uri: part.video_url.url }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode={ResizeMode.CONTAIN}
+                    useNativeControls
+                    shouldPlay={false}
+                  />
+                </View>
               )}
             </View>
           ))}

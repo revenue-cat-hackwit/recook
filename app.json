@@ -11,6 +11,14 @@
       "expo-router",
       "@react-native-google-signin/google-signin",
       [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Izinkan Pirinku mengakses mikrofon untuk mendikte resep dan bertanya pada Chef Bot.",
+          "speechRecognitionPermission": "Izinkan Pirinku mengenali suara Anda untuk pengalaman memasak yang lebih mudah.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ],
+      [
         "expo-font",
         {
           "fonts": [
@@ -50,13 +58,18 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hackwit.pirinku"
+      "bundleIdentifier": "com.hackwit.pirinku",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Izinkan Pirinku mengakses mikrofon untuk mendikte resep dan bertanya pada Chef Bot.",
+        "NSSpeechRecognitionUsageDescription": "Izinkan Pirinku mengenali suara Anda untuk pengalaman memasak yang lebih mudah."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png"
       },
+      "permissions": ["android.permission.RECORD_AUDIO"],
       "package": "com.hackwit.pirinku",
       "softwareKeyboardLayoutMode": "pan"
     },

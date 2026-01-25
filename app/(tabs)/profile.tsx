@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LanguageSelector } from '@/components/LanguageSelector';
 
 export default function Profile() {
   const router = useRouter();
@@ -120,6 +121,11 @@ export default function Profile() {
       <Text className="mb-6 px-4 text-center font-visby leading-5 text-gray-800">
         Masak simpel, hemat, & lezat ala anak kost 🍳🔥
       </Text>
+
+      {/* Language Settings */}
+      <View className="mb-6 px-4">
+        <LanguageSelector />
+      </View>
 
       {/* Tabs */}
       <View className="flex-row border-b border-gray-100">

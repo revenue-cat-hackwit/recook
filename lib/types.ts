@@ -1,7 +1,8 @@
 export interface MessageContent {
-  type: 'text' | 'image_url';
+  type: 'text' | 'image_url' | 'video_url';
   text?: string;
   image_url?: { url: string };
+  video_url?: { url: string };
 }
 
 export interface Message {

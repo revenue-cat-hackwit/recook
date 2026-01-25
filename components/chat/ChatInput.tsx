@@ -2,15 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import {
-  useAudioRecorder,
-  useAudioRecorderState,
-  AudioModule,
-  RecordingPresets,
-  IOSOutputFormat,
-  AudioQuality,
-} from 'expo-audio';
-import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+import { useSettingsStore } from '@/lib/store/settingsStore';
 
 interface ChatInputProps {
   value: string;
@@ -30,143 +23,87 @@ export const ChatInput = ({
   disabled,
 }: ChatInputProps) => {
   const router = useRouter();
+  const language = useSettingsStore((state) => state.language);
 
-  // Configuration for Novita AI (Requires WAV or MP3)
-  // iOS -> WAV (LinearPCM)
-  // Android -> M4A (Default AAC) -> Note: Might fail on Novita if they strictly block M4A.
-  const recordingOptions = {
-    ...RecordingPresets.HIGH_QUALITY,
-    ios: {
-      extension: '.wav',
-      outputFormat: IOSOutputFormat.LINEARPCM,
-      audioQuality: AudioQuality.MAX,
-      sampleRate: 44100,
-      numberOfChannels: 1,
-      bitRate: 128000,
-      linearPCMBitDepth: 16,
-      linearPCMIsBigEndian: false,
-      linearPCMIsFloat: false,
-    },
-  };
-
-  // Use expo-audio recorder
-  const audioRecorder = useAudioRecorder(recordingOptions, (status) => {
-    // Status updates
-  });
-
-  const audioState = useAudioRecorderState(audioRecorder);
-
+  const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      // Cleanup
-      if (audioRecorder.isRecording) {
-        audioRecorder.stop();
-      }
-    };
-  }, []);
+  // Hook-based event listeners (Clean & Expo-way)
+  useSpeechRecognitionEvent('start', () => setIsRecording(true));
+  useSpeechRecognitionEvent('end', () => {
+    setIsRecording(false);
+    setIsTranscribing(false);
+  });
 
-  const requestPermission = async () => {
-    const status = await AudioModule.requestRecordingPermissionsAsync();
-    if (!status.granted) {
+  useSpeechRecognitionEvent('result', (event) => {
+    // Expo module returns results differently: event.results[0]?.transcript
+    const transcript = event.results[0]?.transcript;
+    if (transcript) {
+      if (value) {
+        // If appending, careful not to double append if final vs interim
+        // But for simple implementation, we can just replace logic or intelligent append
+        // Ideally: keep track of what part is stable vs interim
+        // Here we keep it simple: Replace current input if empty, or append if not.
+        // NOTE: This might duplicate text if interim results fire rapidly.
+        // Better strategy for production:
+        // 1. Store previousStableText
+        // 2. Display previousStableText + currentTranscript
+        // 3. On final result, update previousStableText
+
+        // For now, let's just set text directly for simplicity (works best if user speaks one phrase)
+        onChangeText(transcript);
+      } else {
+        onChangeText(transcript);
+      }
+    }
+  });
+
+  useSpeechRecognitionEvent('error', (event) => {
+    console.log('[Speech] Error:', event.error, event.message);
+    setIsRecording(false);
+    setIsTranscribing(false);
+    // Don't alert "no-speech", just silent fail
+    if (event.error !== 'no-speech') {
+      Alert.alert('Error', `Gagal mengenali suara: ${event.message || event.error}`);
+    }
+  });
+
+  const handleStart = async () => {
+    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!result.granted) {
       Alert.alert('Izin Ditolak', 'Mohon izinkan akses mikrofon untuk mendikte.');
+      return;
+    }
+
+    try {
+      setIsTranscribing(true);
+      // Map language codes
+      const locale = language === 'id' ? 'id-ID' : language === 'en' ? 'en-US' : 'id-ID';
+
+      // Start recognition
+      ExpoSpeechRecognitionModule.start({
+        lang: locale,
+        interimResults: true, // Show text while speaking
+        maxAlternatives: 1,
+        // On iOS 18+ and Android 13+, continuous ensures it doesn't stop too early
+        continuous: false,
+      });
+    } catch (e) {
+      console.error('Failed to start recognition', e);
+      setIsRecording(false);
+      setIsTranscribing(false);
     }
   };
 
-  async function startRecording() {
-    try {
-      const perms = await AudioModule.getRecordingPermissionsAsync();
-      if (!perms.granted) {
-        await requestPermission();
-      }
+  const handleStop = () => {
+    ExpoSpeechRecognitionModule.stop();
+  };
 
-      // Record!!
-      audioRecorder.record();
-    } catch (err) {
-      console.error('Failed to start recording', err);
-      Alert.alert('Error', 'Gagal memulai perekaman suara.');
-    }
-  }
-
-  async function stopRecording() {
-    if (!audioRecorder.isRecording) return;
-
-    setIsTranscribing(true);
-    try {
-      await audioRecorder.stop();
-
-      // Get URI
-      const uri = audioRecorder.uri;
-
-      if (uri) {
-        handleTranscribe(uri);
-      } else {
-        throw new Error('No recording URI');
-      }
-    } catch (err) {
-      console.error('Stop error', err);
-      setIsTranscribing(false);
-    }
-  }
-
-  const handleTranscribe = async (uri: string) => {
-    try {
-      // Determine file type based on extension
-      const fileExtension = uri.split('.').pop()?.toLowerCase();
-      let mimeType = 'audio/mp4'; // Default to m4a
-      let fileName = `recording.${fileExtension}`;
-
-      if (fileExtension === 'wav') {
-        mimeType = 'audio/wav';
-      } else if (fileExtension === 'mp3') {
-        mimeType = 'audio/mpeg';
-      } else if (fileExtension === 'm4a') {
-        mimeType = 'audio/mp4';
-      }
-
-      const formData = new FormData();
-      formData.append('audio', {
-        // BACKEND EXPECTS 'audio'
-        uri,
-        name: fileName,
-        type: mimeType,
-      } as any);
-
-      // Manual Fetch / Force Anon Key
-      const token = supabaseAnonKey;
-
-      if (!token) {
-        throw new Error('No Auth Token');
-      }
-
-      const FUNCTION_URL = `${supabaseUrl}/functions/v1/voice-dictation`;
-      console.log(`Posting to ${FUNCTION_URL} (${mimeType})`);
-
-      const response = await fetch(FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server Error ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      if (data?.transcript) {
-        const newText = value ? `${value} ${data.transcript}` : data.transcript;
-        onChangeText(newText);
-      }
-    } catch (err: any) {
-      console.error('Transcription failed', err);
-      Alert.alert('Gagal', `Detail: ${err.message}`);
-    } finally {
-      setIsTranscribing(false);
+  const handleMicPress = () => {
+    if (isRecording) {
+      handleStop();
+    } else {
+      handleStart();
     }
   };
 
@@ -199,7 +136,8 @@ export const ChatInput = ({
         <View className="flex-row items-center gap-4">
           <TouchableOpacity
             onPress={onPickImage}
-            disabled={disabled || loading || audioState.isRecording}
+            disabled={disabled || loading || isRecording}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <View className="h-10 w-10 items-center justify-center rounded-full bg-[#2A2B2C]">
               <Ionicons name="add" size={24} color="#E3E3E3" />
@@ -230,21 +168,26 @@ export const ChatInput = ({
               {isTranscribing ? (
                 <ActivityIndicator color="#E3E3E3" />
               ) : (
-                <TouchableOpacity onPress={audioState.isRecording ? stopRecording : startRecording}>
+                <TouchableOpacity
+                  onPress={handleMicPress}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  className="z-50"
+                  activeOpacity={0.7}
+                >
                   <View
-                    className={`h-10 w-10 items-center justify-center rounded-full ${audioState.isRecording ? 'bg-red-500' : ''}`}
+                    className={`h-10 w-10 items-center justify-center rounded-full ${isRecording ? 'bg-red-500' : ''}`}
                   >
                     <Ionicons
-                      name={audioState.isRecording ? 'stop' : 'mic'}
+                      name={isRecording ? 'stop' : 'mic'}
                       size={24}
-                      color={audioState.isRecording ? 'white' : '#E3E3E3'}
+                      color={isRecording ? 'white' : '#E3E3E3'}
                     />
                   </View>
                 </TouchableOpacity>
               )}
 
               {/* Voice Mode Link */}
-              {!audioState.isRecording && (
+              {!isRecording && (
                 <TouchableOpacity onPress={() => router.push('/voice-mode')}>
                   <View className="h-10 w-10 items-center justify-center rounded-full border border-gray-700 bg-black">
                     <Ionicons name="pulse" size={24} color="white" />
