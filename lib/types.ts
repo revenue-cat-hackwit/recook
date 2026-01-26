@@ -6,23 +6,45 @@ export interface MessageContent {
 }
 
 export interface Message {
+  id: string;
   role: 'user' | 'assistant';
-  content: string | MessageContent[];
-  timestamp: Date;
+  text?: string;
+  content?: string | MessageContent[];
+  timestamp?: number;
+}
+
+export interface VoiceConfig {
+  voiceId?: string;
+  speed?: number;
+  emotion?: string;
+  language?: string;
+  targetLanguage?: string;
+}
+
+export interface VoiceResponse {
+  transcript: string;
+  reply: string;
+  audio: string | null;
+  silent?: boolean;
+  is_stt_only?: boolean;
+}
+
+export interface RecipeStep {
+  step: string;
+  instruction: string;
 }
 
 export interface Recipe {
-  id?: string; // Local ID for saved items
+  id?: string;
   title: string;
   description: string;
-  time_minutes: number;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  servings: number;
-  calories_per_serving: number;
   ingredients: string[];
-  tools: string[];
-  steps: { step: number; instruction: string }[];
-  tips: string;
-  sourceUrl?: string; // To link back to video
+  steps: RecipeStep[];
+  time_minutes: string;
+  difficulty: string;
+  servings: string;
+  calories_per_serving: string;
+  tips?: string;
+  sourceUrl?: string;
   createdAt?: string;
 }

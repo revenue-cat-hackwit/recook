@@ -10,8 +10,8 @@ import {
   Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Message } from '@/lib/types';
+import { AIService } from '@/lib/services/aiService';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,10 +54,11 @@ export default function Chatbot() {
   const flatListRef = useRef<FlatList>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
+      id: '1',
       role: 'assistant',
       content:
         'Halo! Saya Chef Bot Pirinku 👨‍🍳. Ada bahan apa di kulkasmu hari ini? Atau mau ide masak apa?',
-      timestamp: new Date(),
+      timestamp: Date.now(),
     },
   ]);
   const [inputText, setInputText] = useState('');
@@ -67,9 +68,10 @@ export default function Chatbot() {
     if (!inputText.trim() && !loading) return;
 
     const userMessage: Message = {
+      id: Date.now().toString(),
       role: 'user',
       content: inputText.trim(),
-      timestamp: new Date(),
+      timestamp: Date.now(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -77,54 +79,17 @@ export default function Chatbot() {
     setLoading(true);
 
     try {
-      const apiMessages = messages.concat(userMessage).map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      const allMessages = messages.concat(userMessage);
 
-      console.log('[Chatbot] Sending payload:', { messages: apiMessages });
+      console.log('[Chatbot] Sending via Service:', { count: allMessages.length });
 
-      // WORKAROUND: Force Use Anon Key because User Token (ES256) is rejected by Edge Function (HS256 default)
-      // We will send user_id in body if needed for tracking
-      const token = supabaseAnonKey;
-
-      const isAnon = token === supabaseAnonKey;
-      console.log(`[DEBUG] Target URL: ${supabaseUrl}/functions/v1/ai-assistant`);
-
-      console.log(`[DEBUG] Anon Key Prefix: ${supabaseAnonKey.substring(0, 15)}...`);
-      console.log(`[DEBUG] Token Used: ${isAnon ? 'ANON KEY' : 'USER TOKEN'}`);
-      console.log(`[DEBUG] Token Prefix: ${token?.substring(0, 15)}...`);
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, // EXPLICIT HEADER
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          max_tokens: 1000,
-          temperature: 0.7,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Function failed with status ${response.status}: ${errorText}`);
-      }
-
-      const data = await response.json();
-
-      console.log('[Chatbot] Raw Response:', data);
-
-      // Safety check for response structure
-      const aiResponseContent =
-        data?.data?.message || data?.message || 'Maaf, saya tidak mengerti.';
+      const aiResponseContent = await AIService.sendMessage(allMessages);
 
       const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: aiResponseContent,
-        timestamp: new Date(),
+        timestamp: Date.now(),
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -163,6 +128,7 @@ export default function Chatbot() {
       }
       const base64 = `data:image/jpeg;base64,${asset.base64}`;
       const userMessage: Message = {
+        id: Date.now().toString(),
         role: 'user',
         content: [
           {
@@ -171,7 +137,7 @@ export default function Chatbot() {
           },
           { type: 'image_url', image_url: { url: base64 } },
         ],
-        timestamp: new Date(),
+        timestamp: Date.now(),
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -179,38 +145,15 @@ export default function Chatbot() {
       setLoading(true);
 
       try {
-        const apiMessages = messages.concat(userMessage).map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
+        const allMessages = messages.concat(userMessage);
 
-        // FORCE USE ANON KEY (Workaround for ES256 Token issue)
-        const token = supabaseAnonKey;
-
-        const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            messages: apiMessages,
-            max_tokens: 1000,
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Function failed with status ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
+        const aiResponseContent = await AIService.sendMessage(allMessages);
 
         const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: data.data.message,
-          timestamp: new Date(),
+          content: aiResponseContent,
+          timestamp: Date.now(),
         };
 
         setMessages((prev) => [...prev, aiMessage]);

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useSettingsStore } from '@/lib/store/settingsStore';
+import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
+import { VoiceService } from '@/lib/services/voiceService';
 
 interface ChatInputProps {
   value: string;
@@ -25,85 +26,33 @@ export const ChatInput = ({
   const router = useRouter();
   const language = useSettingsStore((state) => state.language);
 
-  const [isRecording, setIsRecording] = useState(false);
+  /* Hook Integration */
+  const { isRecording, startRecording, stopRecording } = useAudioRecorder({
+    // No silence detection needed for Chat Input (manual press)
+  });
+
   const [isTranscribing, setIsTranscribing] = useState(false);
 
-  // Hook-based event listeners (Clean & Expo-way)
-  useSpeechRecognitionEvent('start', () => setIsRecording(true));
-  useSpeechRecognitionEvent('end', () => {
-    setIsRecording(false);
-    setIsTranscribing(false);
-  });
-
-  useSpeechRecognitionEvent('result', (event) => {
-    // Expo module returns results differently: event.results[0]?.transcript
-    const transcript = event.results[0]?.transcript;
-    if (transcript) {
-      if (value) {
-        // If appending, careful not to double append if final vs interim
-        // But for simple implementation, we can just replace logic or intelligent append
-        // Ideally: keep track of what part is stable vs interim
-        // Here we keep it simple: Replace current input if empty, or append if not.
-        // NOTE: This might duplicate text if interim results fire rapidly.
-        // Better strategy for production:
-        // 1. Store previousStableText
-        // 2. Display previousStableText + currentTranscript
-        // 3. On final result, update previousStableText
-
-        // For now, let's just set text directly for simplicity (works best if user speaks one phrase)
-        onChangeText(transcript);
-      } else {
-        onChangeText(transcript);
-      }
-    }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
-    console.log('[Speech] Error:', event.error, event.message);
-    setIsRecording(false);
-    setIsTranscribing(false);
-    // Don't alert "no-speech", just silent fail
-    if (event.error !== 'no-speech') {
-      Alert.alert('Error', `Gagal mengenali suara: ${event.message || event.error}`);
-    }
-  });
-
-  const handleStart = async () => {
-    const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-    if (!result.granted) {
-      Alert.alert('Izin Ditolak', 'Mohon izinkan akses mikrofon untuk mendikte.');
-      return;
-    }
-
-    try {
-      setIsTranscribing(true);
-      // Map language codes
-      const locale = language === 'id' ? 'id-ID' : language === 'en' ? 'en-US' : 'id-ID';
-
-      // Start recognition
-      ExpoSpeechRecognitionModule.start({
-        lang: locale,
-        interimResults: true, // Show text while speaking
-        maxAlternatives: 1,
-        // On iOS 18+ and Android 13+, continuous ensures it doesn't stop too early
-        continuous: false,
-      });
-    } catch (e) {
-      console.error('Failed to start recognition', e);
-      setIsRecording(false);
-      setIsTranscribing(false);
-    }
-  };
-
-  const handleStop = () => {
-    ExpoSpeechRecognitionModule.stop();
-  };
-
-  const handleMicPress = () => {
+  const handleMicPress = async () => {
     if (isRecording) {
-      handleStop();
+      // STOP
+      const uri = await stopRecording();
+      if (uri) {
+        setIsTranscribing(true);
+        try {
+          const res = await VoiceService.processAudio(uri, { language }, true); // true = STT Only
+          if (res.transcript) {
+            onChangeText(res.transcript);
+          }
+        } catch (e) {
+          Alert.alert('Error', 'Gagal memproses suara.');
+        } finally {
+          setIsTranscribing(false);
+        }
+      }
     } else {
-      handleStart();
+      // START
+      await startRecording();
     }
   };
 

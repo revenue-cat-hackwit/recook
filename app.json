@@ -10,14 +10,7 @@
     "plugins": [
       "expo-router",
       "@react-native-google-signin/google-signin",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "Izinkan Pirinku mengakses mikrofon untuk mendikte resep dan bertanya pada Chef Bot.",
-          "speechRecognitionPermission": "Izinkan Pirinku mengenali suara Anda untuk pengalaman memasak yang lebih mudah.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
-        }
-      ],
+
       [
         "expo-font",
         {

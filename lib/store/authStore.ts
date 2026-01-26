@@ -1,7 +1,7 @@
 import { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { create } from 'zustand';
-import { supabase } from '../supabase';
+import { AuthService } from '../services/authService';
 
 interface AuthState {
   session: Session | null;
@@ -16,36 +16,31 @@ interface AuthActions {
   setCredentialsFromUrl: (url: string) => Promise<void>;
   sendResetPasswordForEmail: (email: string) => Promise<void>;
   resetPassword: (newPassword: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   session: null,
   user: null,
   signIn: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      throw error;
-    }
+    const data = await AuthService.signInWithEmail(email, password);
     set({ session: data.session, user: data.user });
   },
 
   signUp: async (username: string, email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { username } },
-    });
-    if (error) {
-      throw error;
-    }
+    const data = await AuthService.signUp(email, password, username);
     set({ session: data.session, user: data.user });
   },
 
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw error;
+  signInWithGoogle: async () => {
+    const data = await AuthService.signInWithGoogle();
+    if (data) {
+      set({ session: data.session, user: data.user });
     }
+  },
+
+  signOut: async () => {
+    await AuthService.signOut();
     set({ session: null, user: null });
   },
 
@@ -55,22 +50,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   sendResetPasswordForEmail: async (email: string) => {
     const redirectTo = Linking.createURL('reset-password');
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-    if (error) {
-      throw error;
-    }
+    await AuthService.resetPasswordForEmail(email, redirectTo);
   },
 
   resetPassword: async (newPassword: string) => {
-    const { data, error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-    if (error) {
-      throw error;
-    }
+    const data = await AuthService.updateUserPassword(newPassword);
     set({ user: data.user });
   },
 
@@ -84,14 +68,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const type = params.get('type');
 
       if (type === 'recovery' && accessToken && refreshToken) {
-        const {
-          data: { session },
-        } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (session) {
-          console.log('setCredentialsFromUrl Success: ', session);
+        const data = await AuthService.setSession(accessToken, refreshToken);
+        if (data?.session) {
+          console.log('setCredentialsFromUrl Success: ', data.session);
           // set({ session: session, user: session?.user });
         }
       }

@@ -8,39 +8,28 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Recipe } from '@/lib/types';
+import { RecipeService } from '@/lib/services/recipeService';
+import { useRecipeStorage } from '@/lib/hooks/useRecipeStorage';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-
-const RECIPES_STORAGE_KEY = 'pirinku_local_recipes_v1';
 
 export default function GenerateScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Sedang Menganalisa...'); // NEW
   const [videoUrl, setVideoUrl] = useState('');
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
-  const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+
+  const { savedRecipes, saveRecipe, deleteRecipe } = useRecipeStorage();
 
   // File Upload State
   const [uploading, setUploading] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadSavedRecipes();
-  }, []);
-
-  const loadSavedRecipes = async () => {
-    try {
-      const jsonValue = await AsyncStorage.getItem(RECIPES_STORAGE_KEY);
-      if (jsonValue != null) {
-        setSavedRecipes(JSON.parse(jsonValue));
-      }
-    } catch (e) {
-      console.error('Failed to load recipes', e);
-    }
+  const resetUpload = () => {
+    setUploadedFileUrl(null);
+    setVideoUrl('');
   };
 
   const handlePickVideo = async () => {
@@ -75,28 +64,9 @@ export default function GenerateScreen() {
 
   const handleUpload = async (uri: string) => {
     setUploading(true);
-    setVideoUrl(''); // Clear text input if uploading
+    setVideoUrl(''); // Clear text input
     try {
-      const ext = uri.split('.').pop()?.toLowerCase() || 'mov';
-      const fileName = `${Date.now()}.${ext}`;
-      const filePath = `uploads/${fileName}`;
-
-      const response = await fetch(uri);
-      const blob = await response.blob();
-
-      const { data, error } = await supabase.storage
-        .from('videos') // Ensure 'videos' bucket exists and is public!
-        .upload(filePath, blob, {
-          contentType: `video/${ext}`,
-          upsert: false,
-        });
-
-      if (error) throw error;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('videos').getPublicUrl(filePath);
-
+      const publicUrl = await RecipeService.uploadVideo(uri);
       setUploadedFileUrl(publicUrl);
       Alert.alert('Sukses', "Video berhasil diupload! Klik 'Buat Resep' sekarang.");
     } catch (error: any) {
@@ -141,41 +111,21 @@ export default function GenerateScreen() {
     try {
       console.log('Sending to AI, URL:', targetUrl);
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/generate-recipe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({
-          videoUrl: targetUrl,
-        }),
-      });
+      const generatedRecipe = await RecipeService.generateFromVideo(targetUrl);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`AI processing failed: ${errorText}`);
-      }
+      const newRecipe: Recipe = {
+        ...generatedRecipe,
+        sourceUrl: targetUrl,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+      };
 
-      const data = await response.json();
-      console.log('Recipe Data:', data);
+      setCurrentRecipe(newRecipe);
+      saveRecipe(newRecipe);
 
-      if (data.success && data.data) {
-        const newRecipe: Recipe = {
-          ...data.data,
-          sourceUrl: targetUrl,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-        setCurrentRecipe(newRecipe);
-        handleSaveRecipe(newRecipe);
-
-        // Reset inputs on success
-        setUploadedFileUrl(null);
-        setVideoUrl('');
-      } else {
-        throw new Error('AI tidak mengembalikan data resep yang valid.');
-      }
+      // Reset inputs on success
+      setUploadedFileUrl(null);
+      setVideoUrl('');
     } catch (error: any) {
       console.error('Error flow:', error);
       Alert.alert('Gagal', error.message || 'Terjadi kesalahan saat memproses video.');
@@ -184,29 +134,6 @@ export default function GenerateScreen() {
       setLoading(false);
       setLoadingMessage('Sedang Menganalisa...'); // Reset default
     }
-  };
-
-  const handleSaveRecipe = async (recipe: Recipe) => {
-    try {
-      const exists = savedRecipes.find((r) => r.id === recipe.id);
-      if (exists) return;
-
-      const newHistory = [recipe, ...savedRecipes];
-      setSavedRecipes(newHistory);
-      await AsyncStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(newHistory));
-    } catch (e) {
-      console.error('Save error', e);
-    }
-  };
-
-  const handleDeleteRecipe = async (id: string) => {
-    const newHistory = savedRecipes.filter((r) => r.id !== id);
-    setSavedRecipes(newHistory);
-    await AsyncStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(newHistory));
-  };
-
-  const resetUpload = () => {
-    setUploadedFileUrl(null);
   };
 
   const renderRecipeCard = (recipe: Recipe, isBrief = false) => (
@@ -288,7 +215,7 @@ export default function GenerateScreen() {
 
       {isBrief && (
         <TouchableOpacity
-          onPress={() => handleDeleteRecipe(recipe.id!)}
+          onPress={() => deleteRecipe(recipe.id!)}
           className="absolute right-0 top-0 p-2"
         >
           <Ionicons name="trash-outline" size={18} color="#ccc" />

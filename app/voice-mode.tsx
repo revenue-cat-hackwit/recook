@@ -22,80 +22,55 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { createAudioPlayer } from 'expo-audio';
 import { supabaseAnonKey, supabaseUrl } from '@/lib/supabase';
 import { useSettingsStore } from '@/lib/store/settingsStore';
+import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
+import { VoiceService } from '@/lib/services/voiceService';
 
-// --- Voice Options Configuration (6 Voices) ---
-const VOICES = [
-  {
-    id: 'Wise_Woman',
-    name: 'Wise Woman',
-    emotion: 'happy',
-    description: 'Wanita Bijak',
-    asset: require('../assets/voices/Wise_Woman_asset.mp3'),
-  },
-  {
-    id: 'Friendly_Person',
-    name: 'Friendly',
-    emotion: 'happy',
-    description: 'Sahabat',
-    asset: require('../assets/voices/Friendly_Person_asset.mp3'),
-  },
-  {
-    id: 'Deep_Voice_Man',
-    name: 'Deep Voice',
-    emotion: 'neutral',
-    description: 'Pria Dewasa',
-    asset: require('../assets/voices/Deep_Voice_Man_asset.mp3'),
-  },
-  {
-    id: 'Lively_Girl',
-    name: 'Lively Girl',
-    emotion: 'happy',
-    description: 'Ceria',
-    asset: require('../assets/voices/Lively_Girl_asset.mp3'),
-  },
-  {
-    id: 'Young_Knight',
-    name: 'Knight',
-    emotion: 'neutral',
-    description: 'Pria Muda',
-    asset: require('../assets/voices/Young_Knight_asset.mp3'),
-  },
-  {
-    id: 'Sweet_Girl_2',
-    name: 'Sweet Girl',
-    emotion: 'happy',
-    description: 'Manis',
-    asset: require('../assets/voices/Sweet_Girl_2_asset.mp3'),
-  },
-];
-
-const SPEEDS = [
-  { value: 0.8, label: 'Lambat' },
-  { value: 1.0, label: 'Normal' },
-  { value: 1.2, label: 'Cepat' },
-];
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
-}
+import { VOICES, SPEEDS } from '@/lib/constants';
+import { Message } from '@/lib/types';
 
 export default function VoiceModeScreen() {
   const router = useRouter();
   const language = useSettingsStore((state) => state.language);
   const flatListRef = useRef<FlatList>(null);
 
+  // --- Audio Recording Hook ---
+  const handleSilence = async () => {
+    console.log('Silence detected, stopping...');
+    // Use Ref to break circular dependency
+    if (stopRecordingRef.current) {
+      const uri = await stopRecordingRef.current();
+      if (uri) handleVoiceConversation(uri);
+    }
+  };
+
+  // Let's try the Ref approach for circular dependency resolution
+  const stopRecordingRef = useRef<() => Promise<string | null>>(async () => null);
+
+  const handleSilenceCallback = async () => {
+    console.log('Silence detected (Callback)');
+    const uri = await stopRecordingRef.current();
+    if (uri) handleVoiceConversation(uri);
+  };
+
+  const { isRecording, startRecording, stopRecording, cancelRecording } = useAudioRecorder({
+    onSilenceDetected: handleSilenceCallback,
+    silenceDuration: 2000,
+    silenceThreshold: -50,
+  });
+
+  // Sync ref
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
+
   // States
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { id: 'init', role: 'assistant', text: 'Halo! Ada yang bisa saya bantu hari ini?' }, // Initial greeting
+    { id: 'init', role: 'assistant', text: 'Halo! Ada yang bisa saya bantu hari ini?' },
   ]);
 
   // Customization State
@@ -128,42 +103,6 @@ export default function VoiceModeScreen() {
     );
   }, [isRecording]);
 
-  // Auto-scroll when messages change
-  useEffect(() => {
-    if (flatListRef.current && messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 200);
-    }
-  }, [messages]);
-
-  // Hook-based event listeners
-  useSpeechRecognitionEvent('start', () => setIsRecording(true));
-  useSpeechRecognitionEvent('end', () => setIsRecording(false));
-
-  useSpeechRecognitionEvent('result', (event) => {
-    if (event.results && event.results[0]?.transcript) {
-      setTranscript(event.results[0].transcript); // Show interim
-    }
-
-    if (event.isFinal && event.results[0]?.transcript) {
-      if (isProcessing) return; // Prevent duplicate requests
-      const userText = event.results[0].transcript;
-      setTranscript(''); // Clear transcript
-      handleVoiceConversation(userText);
-    }
-  });
-
-  useSpeechRecognitionEvent('error', (event) => {
-    console.error('[Voice Mode] Error:', event.error, event.message);
-    setIsRecording(false);
-    setIsProcessing(false);
-    // Ignore harmless errors
-    if (event.error !== 'no-speech' && event.error !== 'aborted') {
-      // Optional: Show toast instead of Alert
-    }
-  });
-
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: imageScale.value }],
@@ -171,92 +110,64 @@ export default function VoiceModeScreen() {
     };
   });
 
-  async function startRecording() {
+  // Wrapper for manual stop
+  const handleManualStop = async () => {
+    const uri = await stopRecording();
+    if (uri) handleVoiceConversation(uri);
+  };
+
+  const handleVoiceConversation = async (audioUri: string) => {
+    setIsProcessing(true);
+    setTranscript('Mendengarkan...'); // Before we send, or "Processing"...
+    setTranscript('Memproses suara...');
+
     try {
-      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (!result.granted) {
-        Alert.alert('Izin Ditolak', 'Mohon izinkan akses mikrofon untuk mendikte.');
+      const data = await VoiceService.processAudio(audioUri, {
+        voiceId: voiceConfig.voiceId,
+        speed: voiceConfig.speed,
+        emotion: voiceConfig.emotion,
+        language: language,
+      });
+
+      const { transcript: text, reply, audio, silent } = data;
+
+      // If silent
+      if (silent) {
+        setTranscript('');
+        setIsProcessing(false);
+        startRecording();
         return;
       }
 
-      setTranscript('');
-      const langCode = language === 'id' ? 'id-ID' : language === 'en' ? 'en-US' : 'id-ID';
+      // Add to Chat UI
+      const userMsgId = Date.now().toString();
+      setMessages((prev) => [...prev, { id: userMsgId, role: 'user', text: text || '(Audio)' }]);
 
-      ExpoSpeechRecognitionModule.start({
-        lang: langCode,
-        interimResults: true,
-        maxAlternatives: 1,
-        continuous: false,
-      });
-    } catch (err) {
-      console.error('Failed to start voice recognition', err);
-      setIsRecording(false);
-    }
-  }
-
-  async function stopRecording() {
-    try {
-      ExpoSpeechRecognitionModule.stop();
-    } catch (err) {
-      console.error('Stop error', err);
-    }
-  }
-
-  const handleVoiceConversation = async (userText: string) => {
-    setIsProcessing(true);
-
-    // 1. Add User Message immediately
-    const userMsgId = Date.now().toString();
-    setMessages((prev) => [...prev, { id: userMsgId, role: 'user', text: userText }]);
-
-    try {
-      const token = supabaseAnonKey;
-      if (!token) throw new Error('No Auth Token available');
-
-      const FUNCTION_URL = `${supabaseUrl}/functions/v1/voice-processor`;
-
-      const payload = {
-        text: userText,
-        config: {
-          voiceId: voiceConfig.voiceId,
-          speed: voiceConfig.speed,
-          emotion: voiceConfig.emotion,
-          language: language, // Send 'id' or 'en' from store
-        },
-      };
-
-      const response = await fetch(FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server Error ${response.status}`);
-      }
-
-      const data = await response.json();
-      const { reply, audio } = data;
-
-      // 2. Add Assistant Message
       const aiMsgId = (Date.now() + 1).toString();
       setMessages((prev) => [...prev, { id: aiMsgId, role: 'assistant', text: reply }]);
+
+      setTranscript('...'); // Clear or small status
 
       // 3. Play Audio
       if (audio) {
         const player = createAudioPlayer(audio);
         player.play();
+
+        // Auto-restart loop
+        if (typeof player.addListener === 'function') {
+          player.addListener('playbackStatusUpdate', (status: any) => {
+            if (status.didJustFinish) {
+              setTimeout(() => startRecording(), 500);
+            }
+          });
+        }
+      } else {
+        // If no audio (error?), restart anyway
+        setTimeout(() => startRecording(), 1000);
       }
     } catch (err: any) {
       console.error('Conversation failed', err);
-      // Optional: Add error message to chat
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), role: 'assistant', text: 'Maaf, terjadi kesalahan koneksi.' },
-      ]);
+      Alert.alert('Error', 'Gagal memproses suara. Coba lagi.');
     } finally {
       setIsProcessing(false);
     }
@@ -361,7 +272,7 @@ export default function VoiceModeScreen() {
           )}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={isRecording ? stopRecording : startRecording}
+            onPress={isRecording ? handleManualStop : startRecording}
             disabled={isProcessing}
             className={`h-20 w-20 items-center justify-center rounded-full shadow-lg ${isRecording ? 'bg-red-500 shadow-red-200' : 'bg-[#5FD08F] shadow-green-200'}`}
           >

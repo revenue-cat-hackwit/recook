@@ -31,17 +31,20 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
     },
   };
 
+  const content = message.content || message.text || '';
+  const timestamp = message.timestamp || Date.now();
+
   return (
     <View
       className={`mb-4 max-w-[80%] rounded-2xl p-4 ${
         isUser ? 'self-end rounded-br-none bg-blue-500' : 'self-start rounded-bl-none bg-gray-100'
       }`}
     >
-      {typeof message.content === 'string' ? (
-        <Markdown style={markdownStyles}>{message.content}</Markdown>
+      {typeof content === 'string' ? (
+        <Markdown style={markdownStyles}>{content}</Markdown>
       ) : (
         <View>
-          {message.content.map((part, index) => (
+          {content.map((part, index) => (
             <View key={index}>
               {part.type === 'text' && <Markdown style={markdownStyles}>{part.text}</Markdown>}
               {part.type === 'image_url' && part.image_url && (
@@ -71,7 +74,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
           isUser ? 'text-blue-100' : 'text-gray-400'
         } text-right font-visby`}
       >
-        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </Text>
     </View>
   );

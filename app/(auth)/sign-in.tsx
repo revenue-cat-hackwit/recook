@@ -5,9 +5,8 @@ import AuthPrimaryButton from '@/components/auth/AuthPrimaryButton';
 import AuthSocialButton from '@/components/auth/AuthSocialButton';
 import AuthTextField from '@/components/auth/AuthTextField';
 import { useAuthStore } from '@/lib/store/authStore';
-import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin'; // Still needed for configure? Yes. I will keep it for configure call in useEffect.
 import { AuthError } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -20,7 +19,10 @@ export default function SignInPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const signIn = useAuthStore((state) => state.signIn);
+  const { signIn, signInWithGoogle } = useAuthStore((state) => ({
+    signIn: state.signIn,
+    signInWithGoogle: state.signInWithGoogle,
+  }));
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -61,55 +63,12 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    console.log('[GoogleSignin] Starting sign in flow...');
     try {
       setLoading(true);
-      await GoogleSignin.hasPlayServices();
-      console.log('[GoogleSignin] Play Services available.');
-
-      // For debugging only - remove in production or ensure no sensitive data leaks if possible
-      // The configure is called in useEffect, assume it's done.
-
-      const userInfo = await GoogleSignin.signIn();
-      console.log('[GoogleSignin] Sign in success. User Info retrieved.', userInfo);
-
-      if (userInfo.data?.idToken) {
-        console.log('[GoogleSignin] ID Token found. Authenticating with Supabase...');
-
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: userInfo.data.idToken,
-        });
-
-        if (error) {
-          console.error('[Supabase Auth] Error signing in with ID Token:', error);
-          throw error;
-        }
-
-        console.log('[Supabase Auth] Success:', data);
-        // Navigation handled by auth listener in _layout
-      } else {
-        console.error('[GoogleSignin] No ID Token in response:', userInfo);
-        throw new Error('No ID token present!');
-      }
+      await signInWithGoogle();
+      // Navigation is handled by auth listener in _layout
     } catch (error: any) {
-      console.error('[GoogleSignin] Error Catch Block:', error);
-      console.error('[GoogleSignin] Error Code:', error.code);
-      console.error('[GoogleSignin] Error Message:', error.message);
-
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // user cancelled the login flow
-        console.log('[GoogleSignin] User cancelled.');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        // operation (e.g. sign in) is in progress already
-        console.log('[GoogleSignin] In progress.');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        // play services not available or outdated
-        console.log('[GoogleSignin] Play services not available.');
-        setErrorMessage('Google Play Services not available.');
-      } else {
-        setErrorMessage(error.message || 'Google Sign-In failed');
-      }
+      setErrorMessage(error.message || 'Google Sign-In failed');
     } finally {
       setLoading(false);
     }
