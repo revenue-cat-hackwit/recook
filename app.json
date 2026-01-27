@@ -10,7 +10,6 @@
     "plugins": [
       "expo-router",
       "@react-native-google-signin/google-signin",
-
       [
         "expo-font",
         {
@@ -23,22 +22,36 @@
             "fonts": [
               {
                 "fontFamily": "VisbyCF-Regular",
-                "fontDefinitions": [{ "path": "./assets/fonts/VisbyCF-Regular.otf", "weight": 400 }]
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/VisbyCF-Regular.otf",
+                    "weight": 400
+                  }
+                ]
               },
               {
                 "fontFamily": "VisbyCF-Medium",
-                "fontDefinitions": [{ "path": "./assets/fonts/VisbyCF-Medium.otf", "weight": 500 }]
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/VisbyCF-Medium.otf",
+                    "weight": 500
+                  }
+                ]
               },
               {
                 "fontFamily": "VisbyCF-DemiBold",
                 "fontDefinitions": [
-                  { "path": "./assets/fonts/VisbyCF-DemiBold.otf", "weight": 600 }
+                  {
+                    "path": "./assets/fonts/VisbyCF-DemiBold.otf",
+                    "weight": 600
+                  }
                 ]
               }
             ]
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
