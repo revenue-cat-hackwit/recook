@@ -1,26 +1,14 @@
 import { useAuthStore } from '@/lib/store/authStore';
-import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Dimensions, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
-export default function Profile() {
+export default function ProfilePage() {
   const router = useRouter();
-  const session = useAuthStore((state) => state.session);
-  const user = session?.user;
-  const setCredentials = useAuthStore((state) => state.setCredentials);
+  const userData = useAuthStore((state) => state.user?.user_metadata);
   const [activeTab, setActiveTab] = useState<'Posts' | 'Reels' | 'Recipes'>('Posts');
 
   // Dummy Data for Profile
@@ -45,28 +33,22 @@ export default function Profile() {
 
   const { width } = Dimensions.get('window');
   const ITEM_SIZE = width / 3;
+  console.log(userData?.avatar_url);
 
   const renderHeader = () => (
-    <View className="mb-4 bg-white px-4 pt-2">
-      <View className="mb-6 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={28} color="black" />
-        </TouchableOpacity>
-        <Text className="ml-4 flex-1 pt-1 font-visby-bold text-xl text-black">Profile</Text>
-        <TouchableOpacity onPress={() => router.push('/settings')}>
-          <Ionicons name="settings-outline" size={26} color="black" />
-        </TouchableOpacity>
-      </View>
-
+    <View className="mb-4 bg-white px-4">
       {/* Profile Info */}
       <View className="mb-6 items-center">
+        {/* ?t=Date.now() to prevent image caching */}
         <Image
-          source={{ uri: user?.user_metadata?.avatar_url || 'https://via.placeholder.com/150' }}
+          source={{
+            uri: `${userData?.avatar_url}?t=${Date.now()}` || 'https://via.placeholder.com/150',
+          }}
           style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 12 }}
           contentFit="cover"
         />
         <Text className="mb-1 font-visby-bold text-xl text-black">
-          {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Renata'}
+          {userData?.username || userData?.full_name || '-'}
         </Text>
       </View>
 
@@ -91,7 +73,7 @@ export default function Profile() {
       {/* Action Buttons */}
       <View className="mb-6 flex-row justify-center space-x-3">
         <TouchableOpacity
-          onPress={() => router.push('/edit-profile')}
+          onPress={() => router.push('/profile/edit-profile')}
           className="mr-2 flex-1 items-center rounded-lg bg-[#5FD08F] px-8 py-2.5"
         >
           <Text className="font-visby-bold text-base text-white">Edit Profile</Text>
@@ -130,7 +112,8 @@ export default function Profile() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+    <>
+      <StatusBar style="dark" />
       <FlatList
         data={gridImages}
         keyExtractor={(item, index) => index.toString()}
@@ -153,6 +136,6 @@ export default function Profile() {
         )}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </>
   );
 }

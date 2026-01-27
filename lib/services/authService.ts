@@ -1,6 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Session, User } from '@supabase/supabase-js';
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 
 export const AuthService = {
   async signInWithEmail(email: string, password: string) {
@@ -44,33 +48,36 @@ export const AuthService = {
     return data;
   },
 
-  // --- Google Sign In Logic ---
   async signInWithGoogle() {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
 
-      if (userInfo.data?.idToken) {
+      if (isSuccessResponse(userInfo)) {
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
-          token: userInfo.data.idToken,
+          token: userInfo.data.idToken || '',
         });
 
         if (error) throw error;
-        return data; // { session, user }
-      } else {
-        throw new Error('No Google ID Token found');
+        return data;
       }
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        throw new Error('Sign in cancelled');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        throw new Error('Sign in already in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        throw new Error('Play services not available');
-      } else {
-        throw error;
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            throw new Error('User cancelled the login flow');
+          case statusCodes.IN_PROGRESS:
+            throw new Error('Sign in is in progress already');
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            throw new Error('Play services not available or outdated');
+          default:
+            throw new Error('An unknown error occurred during Google Sign-In');
+        }
       }
+      throw error;
+    } finally {
+      await GoogleSignin.signOut();
     }
   },
 };
