@@ -16,7 +16,6 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#FF6B6B',
         tabBarInactiveTintColor: 'gray',
-        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
@@ -31,6 +30,8 @@ export default function TabsLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble" size={size} color={color} />,
+          headerShown: true,
+          headerShadowVisible: false,
         }}
       />
       <Tabs.Screen

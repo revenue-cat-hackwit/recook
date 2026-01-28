@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { View, TextInput, TouchableOpacity, ActivityIndicator, Alert, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSettingsStore } from '@/lib/store/settingsStore';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 import { VoiceService } from '@/lib/services/voiceService';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface ChatInputProps {
   value: string;
@@ -147,10 +148,9 @@ export const ChatInput = ({
       </View>
     );
   }
-
   return (
     <View
-      className="mx-4 mb-8 min-h-[60px] rounded-[32px] bg-[#1E1F20] p-4 shadow-xl"
+      className="mx-4 mb-6 min-h-[60px] rounded-[32px] bg-[#1E1F20] p-4 shadow-xl"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },

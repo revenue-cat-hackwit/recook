@@ -1,24 +1,51 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  FlatList,
-  Alert,
-  Animated,
-  Easing,
-  Text,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { View, FlatList, Alert, Animated, Easing, Text, Platform, Keyboard } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Message } from '@/lib/types';
 import { AIService } from '@/lib/services/aiService';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { EmptyChat } from '@/components/chat/EmptyChat';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
 import RevenueCatUI from 'react-native-purchases-ui';
 import * as Haptics from 'expo-haptics';
+
+const dummyMessages: Message[] = [
+  {
+    id: '1',
+    role: 'assistant',
+    content:
+      'Halo! Saya Chef Bot Pirinku 👨‍🍳. Ada bahan apa di kulkasmu hari ini? Atau mau ide masak apa?',
+    timestamp: Date.now() - 300000,
+  },
+  {
+    id: '2',
+    role: 'user',
+    content: 'Aku punya ayam, bawang putih, dan kecap manis',
+    timestamp: Date.now() - 240000,
+  },
+  {
+    id: '3',
+    role: 'assistant',
+    content:
+      '🍗 **Resep Ayam Kecap Manis**\n\n**Bahan:**\n- 500g ayam potong\n- 4 siung bawang putih\n- 3 sdm kecap manis\n- Garam dan merica secukupnya\n\n**Cara Masak:**\n1. Goreng ayam hingga kecokelatan\n2. Tumis bawang putih hingga harum\n3. Masukkan ayam, tambahkan kecap manis\n4. Aduk rata, masak hingga bumbu meresap\n\nSelamat mencoba! 😋',
+    timestamp: Date.now() - 180000,
+  },
+  {
+    id: '4',
+    role: 'user',
+    content: 'Wah enak! Kalau mau bikin nasi goreng gimana?',
+    timestamp: Date.now() - 120000,
+  },
+  {
+    id: '5',
+    role: 'assistant',
+    content:
+      '🍚 **Resep Nasi Goreng Sederhana**\n\n**Bahan:**\n- 2 piring nasi putih (sebaiknya nasi dingin)\n- 2 butir telur\n- 3 siung bawang putih\n- 2 sdm kecap manis\n- Garam secukupnya\n\n**Cara Masak:**\n1. Kocok telur, buat orak-arik\n2. Tumis bawang putih hingga harum\n3. Masukkan nasi, aduk rata\n4. Tambahkan kecap manis dan garam\n5. Masak hingga nasi kering dan harum\n\nTips: Gunakan api besar agar nasi tidak lembek! 🔥',
+    timestamp: Date.now() - 60000,
+  },
+];
 
 const ThinkingIndicator = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -55,15 +82,8 @@ const ThinkingIndicator = () => {
 
 export default function Chatbot() {
   const flatListRef = useRef<FlatList>(null);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content:
-        'Halo! Saya Chef Bot Pirinku 👨‍🍳. Ada bahan apa di kulkasmu hari ini? Atau mau ide masak apa?',
-      timestamp: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -246,24 +266,61 @@ export default function Chatbot() {
     }
   };
 
-  return (
-    <SafeAreaView className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        enabled={Platform.OS === 'ios'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <FlatList
-          ref={flatListRef}
-          inverted
-          data={[...messages].reverse()}
-          renderItem={({ item }) => <ChatMessage message={item} />}
-          keyExtractor={(_, index) => index.toString()}
-          contentContainerStyle={{ padding: 16, paddingTop: 32 }}
-          ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
-        />
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
 
+  useLayoutEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      Animated.spring(keyboardHeight, {
+        toValue: e.endCoordinates.height * 0.8,
+        useNativeDriver: false,
+        friction: 12,
+        tension: 140,
+      }).start();
+    });
+
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      Animated.spring(keyboardHeight, {
+        toValue: 0,
+        useNativeDriver: false,
+        friction: 12,
+        tension: 140,
+      }).start();
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  return (
+    <View className="flex-1">
+      <Animated.FlatList
+        ref={flatListRef}
+        data={dummyMessages.reverse()}
+        renderItem={({ item }: { item: Message }) => <ChatMessage message={item} />}
+        keyExtractor={(_, index) => index.toString()}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: keyboardHeight,
+          backgroundColor: '#ffffff',
+          flexGrow: 1,
+        }}
+        ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
+        ListEmptyComponent={<EmptyChat />}
+        keyboardShouldPersistTaps="handled"
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          bottom: keyboardHeight,
+          left: 0,
+          right: 0,
+        }}
+      >
         <ChatInput
           value={inputText}
           onChangeText={setInputText}
@@ -271,7 +328,7 @@ export default function Chatbot() {
           onPickImage={pickImage}
           loading={loading}
         />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 }
