@@ -7,7 +7,7 @@ export default function TabIndex() {
 
   useEffect(() => {
     router.replace('/(tabs)/feed');
-  }, []);
+  }, [router]);
 
   return <View />;
 }

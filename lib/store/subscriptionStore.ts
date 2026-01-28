@@ -1,142 +1,157 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 import { SubscriptionState } from '@/lib/types';
 import { ENTITLEMENT_ID, REVENUECAT_API_KEYS, FREE_GENERATION_LIMIT } from '@/lib/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
-  isPro: false,
-  offerings: null,
-  currentCustomerInfo: null,
-  loading: false,
+export const useSubscriptionStore = create<SubscriptionState>()(
+  persist(
+    (set, get) => ({
+      isPro: false,
+      offerings: null,
+      currentCustomerInfo: null,
+      loading: false,
 
-  generatedToday: 0,
-  lastGeneratedDate: null,
+      generatedToday: 0,
+      lastGeneratedDate: null,
 
-  initialize: async () => {
-    // ... (kode initialize yang lama tetap di sini, saya hanya menambah properties di atas)
-    // Note: Untuk brevity saya tidak menulis ulang initialize(), asumsikan merged correctly
-    // Real implementation below tries to keep previous code intact
+      initialize: async () => {
+        set({ loading: true });
+        try {
+          if (Platform.OS === 'ios') {
+            Purchases.configure({ apiKey: REVENUECAT_API_KEYS.apple });
+          } else if (Platform.OS === 'android') {
+            Purchases.configure({ apiKey: REVENUECAT_API_KEYS.google });
+          }
 
-    set({ loading: true });
-    try {
-      if (Platform.OS === 'ios') {
-        Purchases.configure({ apiKey: REVENUECAT_API_KEYS.apple });
-      } else if (Platform.OS === 'android') {
-        Purchases.configure({ apiKey: REVENUECAT_API_KEYS.google });
-      }
+          await Purchases.setLogLevel(Purchases.LOG_LEVEL.WARN);
 
-      await Purchases.setLogLevel(Purchases.LOG_LEVEL.WARN);
+          // Fetch cached/latest info
+          let customerInfo = null;
+          try {
+            customerInfo = await Purchases.getCustomerInfo();
+          } catch (e) {
+            // silent fail for network
+          }
 
-      let customerInfo = null;
-      try {
-        customerInfo = await Purchases.getCustomerInfo();
-      } catch (e) {
-        console.error('Failed to get customer info:', e);
-      }
+          // Check Entitlements
+          let isPro = false;
+          if (customerInfo && customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+            isPro = true;
+          }
 
-      let offerings = null;
-      try {
-        const offeringsData = await Purchases.getOfferings();
-        offerings = offeringsData.current;
-      } catch (e) {
-        console.log('Offerings fetch failed (Check RC Dashboard):', e);
-      }
+          // Date Reset Logic
+          const today = new Date().toDateString();
+          const lastDate = get().lastGeneratedDate;
+          let currentUsage = get().generatedToday;
 
-      const isPro = customerInfo?.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          if (lastDate !== today) {
+            currentUsage = 0;
+            set({ generatedToday: 0, lastGeneratedDate: today });
+          }
 
-      // Check Local Daily Usage Reset
-      const today = new Date().toDateString();
-      const lastDate = get().lastGeneratedDate;
+          // Load Offerings in background
+          if (!get().offerings) {
+            // Only if not cached
+            try {
+              const offerings = await Purchases.getOfferings();
+              if (offerings.current) {
+                set({ offerings: offerings.current });
+              }
+            } catch (e) {}
+          }
 
-      let currentUsage = get().generatedToday;
-      if (lastDate !== today) {
-        currentUsage = 0; // Reset if new day
-      }
+          set({
+            isPro,
+            currentCustomerInfo: customerInfo,
+            loading: false,
+          });
+        } catch (e) {
+          console.error('RC Init Error:', e);
+          set({ loading: false });
+        }
+      },
 
-      set({
-        currentCustomerInfo: customerInfo,
-        offerings: offerings,
-        isPro,
-        generatedToday: currentUsage,
-        lastGeneratedDate: today,
-        loading: false,
-      });
+      purchasePackage: async (pack: PurchasesPackage) => {
+        set({ loading: true });
+        try {
+          const { customerInfo } = await Purchases.purchasePackage(pack);
+          const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
 
-      console.log('RevenueCat Initialized. Pro:', isPro, 'Usage:', currentUsage);
-    } catch (e) {
-      console.error('RevenueCat Init Critical Error:', e);
-      set({ loading: false });
-    }
-  },
+          set({
+            currentCustomerInfo: customerInfo,
+            isPro,
+            loading: false,
+          });
 
-  purchasePackage: async (pack: PurchasesPackage) => {
-    set({ loading: true });
-    try {
-      const { customerInfo } = await Purchases.purchasePackage(pack);
-      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          return isPro;
+        } catch (e: any) {
+          if (!e.userCancelled) {
+            console.error('Purchase Error:', e);
+          }
+          set({ loading: false });
+          return false;
+        }
+      },
 
-      set({
-        currentCustomerInfo: customerInfo,
-        isPro,
-        loading: false,
-      });
+      restorePurchases: async () => {
+        set({ loading: true });
+        try {
+          const customerInfo = await Purchases.restorePurchases();
+          const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
 
-      return isPro;
-    } catch (e: any) {
-      if (!e.userCancelled) {
-        console.error('Purchase Error:', e);
-      }
-      set({ loading: false });
-      return false;
-    }
-  },
+          set({
+            currentCustomerInfo: customerInfo,
+            isPro,
+            loading: false,
+          });
 
-  restorePurchases: async () => {
-    set({ loading: true });
-    try {
-      const customerInfo = await Purchases.restorePurchases();
-      const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          return isPro;
+        } catch (e) {
+          console.error('Restore Error:', e);
+          set({ loading: false });
+          return false;
+        }
+      },
 
-      set({
-        currentCustomerInfo: customerInfo,
-        isPro,
-        loading: false,
-      });
+      checkCanGenerate: () => {
+        const { isPro, generatedToday, lastGeneratedDate } = get();
 
-      return isPro;
-    } catch (e) {
-      console.error('Restore Error:', e);
-      set({ loading: false });
-      return false;
-    }
-  },
+        // 1. Pro Users = Unlimited
+        if (isPro) return true;
 
-  checkCanGenerate: () => {
-    const { isPro, generatedToday, lastGeneratedDate } = get();
+        // 2. Check Date Reset (redundant safety check)
+        const today = new Date().toDateString();
+        if (lastGeneratedDate !== today) {
+          set({ generatedToday: 0, lastGeneratedDate: today });
+          return true; // Limit resets, so they have 0 usage
+        }
 
-    // Always allow if Pro
-    if (isPro) return true;
+        // 3. Free Limit
+        return generatedToday < FREE_GENERATION_LIMIT;
+      },
 
-    // Check if day reset needed
-    const today = new Date().toDateString();
-    if (lastGeneratedDate !== today) {
-      set({ generatedToday: 0, lastGeneratedDate: today });
-      return true;
-    }
-
-    // Limit for Free users
-    return generatedToday < FREE_GENERATION_LIMIT;
-  },
-
-  incrementUsage: () => {
-    const { generatedToday, lastGeneratedDate } = get();
-    const today = new Date().toDateString();
-
-    if (lastGeneratedDate !== today) {
-      set({ generatedToday: 1, lastGeneratedDate: today });
-    } else {
-      set({ generatedToday: generatedToday + 1 });
-    }
-  },
-}));
+      incrementUsage: () => {
+        const { generatedToday } = get();
+        const today = new Date().toDateString();
+        set({
+          generatedToday: generatedToday + 1,
+          lastGeneratedDate: today,
+        });
+      },
+    }),
+    {
+      name: 'pirinku_subscription_v1',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Don't persist things that should be fresh
+      partialize: (state) => ({
+        generatedToday: state.generatedToday,
+        lastGeneratedDate: state.lastGeneratedDate,
+        // optionally persist isPro for offline access, verify on init
+        isPro: state.isPro,
+      }),
+    },
+  ),
+);

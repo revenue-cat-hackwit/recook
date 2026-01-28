@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { View, Text, Animated, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface ToastRef {
   show: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -9,6 +9,7 @@ export interface ToastRef {
 }
 
 const Toast = forwardRef<ToastRef, {}>((props, ref) => {
+  const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'success' | 'error' | 'info'>('info');
@@ -86,6 +87,7 @@ const Toast = forwardRef<ToastRef, {}>((props, ref) => {
           opacity,
           transform: [{ translateY }],
           backgroundColor: bgColors[type],
+          top: insets.top + 10,
         },
       ]}
     >
@@ -103,7 +105,6 @@ const Toast = forwardRef<ToastRef, {}>((props, ref) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40, // Adjust for Status Bar
     left: 20,
     right: 20,
     padding: 16,

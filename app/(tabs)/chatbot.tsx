@@ -70,6 +70,17 @@ export default function Chatbot() {
   // Subscription Hooks
   const { checkCanGenerate, incrementUsage, initialize } = useSubscriptionStore();
 
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    const history = await AIService.getHistory();
+    if (history.length > 0) {
+      setMessages(history); // Replace with cloud history
+    }
+  };
+
   const handlePresentPaywall = async () => {
     const paywallResult = await RevenueCatUI.presentPaywall();
     if (
@@ -85,16 +96,16 @@ export default function Chatbot() {
 
     // 1. CHECK QUOTA for Chat
     if (!checkCanGenerate()) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-            'Daily Limit Reached 🍳',
-            'You have used your free interactions for today. Upgrade to Pro for unlimited chat!',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Upgrade to Pro', onPress: handlePresentPaywall }
-            ]
-        );
-        return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Daily Limit Reached 🍳',
+        'You have used your free interactions for today. Upgrade to Pro for unlimited chat!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: handlePresentPaywall },
+        ],
+      );
+      return;
     }
 
     const userMessage: Message = {
@@ -109,13 +120,16 @@ export default function Chatbot() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // Save User Msg
+    AIService.saveMessage('user', userMessage.content!);
+
     try {
-      const allMessages = messages.concat(userMessage);
+      const allMessages = messages.concat(userMessage); // optimize this if history is huge (limit context)
 
       console.log('[Chatbot] Sending via Service:', { count: allMessages.length });
 
       const aiResponseContent = await AIService.sendMessage(allMessages);
-      
+
       // 2. Increment Usage on Success
       incrementUsage();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -128,6 +142,9 @@ export default function Chatbot() {
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+
+      // Save AI Msg
+      AIService.saveMessage('assistant', aiResponseContent);
     } catch (error: any) {
       console.error('[Chatbot] Error calling AI:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -140,16 +157,16 @@ export default function Chatbot() {
   const pickImage = async () => {
     // 1. CHECk QUOTA for Image Upload
     if (!checkCanGenerate()) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
-            'Daily Limit Reached 🍳',
-            'You have used your free interactions for today. Upgrade to Pro for unlimited photo analysis!',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Upgrade to Pro', onPress: handlePresentPaywall }
-            ]
-        );
-        return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        'Daily Limit Reached 🍳',
+        'You have used your free interactions for today. Upgrade to Pro for unlimited photo analysis!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Upgrade to Pro', onPress: handlePresentPaywall },
+        ],
+      );
+      return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -196,6 +213,9 @@ export default function Chatbot() {
       setLoading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+      // Save User Msg (Image + Text)
+      AIService.saveMessage('user', userMessage.content!);
+
       try {
         const allMessages = messages.concat(userMessage);
 
@@ -213,6 +233,9 @@ export default function Chatbot() {
         };
 
         setMessages((prev) => [...prev, aiMessage]);
+
+        // Save AI
+        AIService.saveMessage('assistant', aiResponseContent);
       } catch (error: any) {
         console.error('Error analyzing image:', error);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

@@ -35,6 +35,18 @@ export default function VoiceModeScreen() {
   const router = useRouter();
   const language = useSettingsStore((state) => state.language);
   const flatListRef = useRef<FlatList>(null);
+  const currentPreviewPlayer = useRef<any>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (currentPreviewPlayer.current) {
+        try {
+          currentPreviewPlayer.current.pause();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   // --- Audio Recording Hook ---
   const handleSilence = async () => {
@@ -150,13 +162,24 @@ export default function VoiceModeScreen() {
 
       // 3. Play Audio
       if (audio) {
+        // Cleanup old player if any (though usually we wait)
+        if (currentPreviewPlayer.current) {
+          try {
+            currentPreviewPlayer.current.pause();
+          } catch (e) {}
+        }
+
         const player = createAudioPlayer(audio);
+        currentPreviewPlayer.current = player;
         player.play();
 
         // Auto-restart loop
         if (typeof player.addListener === 'function') {
-          player.addListener('playbackStatusUpdate', (status: any) => {
+          const listener = player.addListener('playbackStatusUpdate', (status: any) => {
             if (status.didJustFinish) {
+              // Cleanup
+              listener.remove();
+              // Restart recording
               setTimeout(() => startRecording(), 500);
             }
           });
@@ -168,12 +191,11 @@ export default function VoiceModeScreen() {
     } catch (err: any) {
       console.error('Conversation failed', err);
       Alert.alert('Error', 'Failed to process audio. Please try again.');
+      startRecording(); // Restart recording on error so user isn't stuck
     } finally {
       setIsProcessing(false);
     }
   };
-
-  const currentPreviewPlayer = useRef<any>(null);
 
   const playPreview = async (voice: (typeof VOICES)[0]) => {
     setVoiceConfig((prev) => ({ ...prev, voiceId: voice.id, emotion: voice.emotion }));
@@ -183,9 +205,9 @@ export default function VoiceModeScreen() {
       // Stop any previous playback
       if (currentPreviewPlayer.current) {
         try {
-            currentPreviewPlayer.current.pause();
+          currentPreviewPlayer.current.pause();
         } catch (e) {
-            console.log("Error pausing previous player:", e);
+          console.log('Error pausing previous player:', e);
         }
       }
 

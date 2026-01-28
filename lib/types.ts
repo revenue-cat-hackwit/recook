@@ -48,6 +48,7 @@ export interface Recipe {
   calories_per_serving: string;
   tips?: string;
   sourceUrl?: string;
+  imageUrl?: string;
   createdAt?: string;
 }
 
