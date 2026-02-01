@@ -106,7 +106,7 @@ export default function Profile() {
         const response = await PostService.getPosts();
         // Filter posts by current user
         const userPosts = response.data.posts.filter(
-          (post) => post.userId._id === profileData?.id
+          (post) => post.user.id === profileData?.id
         );
         setMyPosts(userPosts);
       } else if (tab === 'Reply') {
@@ -223,7 +223,7 @@ export default function Profile() {
           </View>
         );
       }
-      return <FlatList data={myPosts} renderItem={renderPostItem} keyExtractor={(item) => item._id} scrollEnabled={false} />;
+      return <FlatList data={myPosts} renderItem={renderPostItem} keyExtractor={(item) => item.id} scrollEnabled={false} />;
     }
 
     if (activeTab === 'Reply') {
@@ -251,7 +251,7 @@ export default function Profile() {
           </View>
         );
       }
-      return <FlatList data={savedPosts} renderItem={renderPostItem} keyExtractor={(item) => item._id} scrollEnabled={false} />;
+      return <FlatList data={savedPosts} renderItem={renderPostItem} keyExtractor={(item) => item.id} scrollEnabled={false} />;
     }
 
     return null;
@@ -357,8 +357,8 @@ export default function Profile() {
               >
                 <Text
                   className={`font-visby text-sm ${activeTab === tab
-                      ? 'font-bold text-[#8BD65E]'
-                      : 'text-gray-400 dark:text-gray-500'
+                    ? 'font-bold text-[#8BD65E]'
+                    : 'text-gray-400 dark:text-gray-500'
                     }`}
                 >
                   {tab}

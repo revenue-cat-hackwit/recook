@@ -3,9 +3,9 @@ import { Redirect, Stack } from 'expo-router';
 import React from 'react';
 
 export default function AuthLayout() {
-  const session = useAuthStore((state) => state.session);
+  const token = useAuthStore((state) => state.token);
 
-  if (session) {
+  if (token) {
     return <Redirect href="/feed" />;
   }
 
