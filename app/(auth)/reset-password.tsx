@@ -2,14 +2,16 @@ import AuthBackButton from '@/components/auth/AuthBackButton';
 import AuthHeader from '@/components/auth/AuthHeader';
 import AuthPasswordField from '@/components/auth/AuthPasswordField';
 import AuthPrimaryButton from '@/components/auth/AuthPrimaryButton';
+import AuthTextField from '@/components/auth/AuthTextField';
 import { useAuthStore } from '@/lib/store/authStore';
-import { AuthError } from '@supabase/supabase-js';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ResetPasswordPage() {
+  const { email } = useLocalSearchParams<{ email: string }>();
+  const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,21 +29,46 @@ export default function ResetPasswordPage() {
   const handleResetPress = async () => {
     if (isLoading) return;
 
+    if (!email) {
+      setErrorMessage('Email is missing. Please try again from forgot password.');
+      return;
+    }
+
+    if (!otp || otp.length !== 6) {
+      setErrorMessage('Please enter the 6-digit OTP code.');
+      return;
+    }
+
+    if (!newPassword || !confirmPassword) {
+      setErrorMessage('Please fill in all fields.');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setErrorMessage('Passwords do not match.');
       return;
     }
 
+    if (newPassword.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long.');
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await resetPassword(newPassword);
-      setErrorMessage('Your password has been reset. Please log in with your new password.');
-    } catch (error) {
-      if (error instanceof AuthError) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      await resetPassword(email, otp, newPassword);
+      Alert.alert(
+        'Success',
+        'Your password has been reset successfully. Please log in with your new password.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/sign-in'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      setErrorMessage(error.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -55,12 +82,23 @@ export default function ResetPasswordPage() {
         <View className="gap-6">
           <AuthHeader
             title="Reset Password"
-            subtitle="Create your new Password, Password must be different from any password you have used before."
+            subtitle={`Enter the OTP code sent to ${email} and create your new password.`}
             titleClassName="font-visby text-2xl font-semibold text-black"
             subtitleClassName="font-visby text-sm text-gray-500"
           />
 
           <View className="gap-4">
+            <AuthTextField
+              label="OTP Code"
+              placeholder="Enter 6-digit code"
+              keyboardType="number-pad"
+              maxLength={6}
+              labelClassName="font-visby text-sm font-medium text-black"
+              inputWrapperClassName="rounded-xl border border-green-400 px-4 py-3"
+              inputClassName="font-visby text-sm text-black"
+              value={otp}
+              onChangeText={setOtp}
+            />
             <AuthPasswordField
               label="New Password"
               placeholder="••••••••"
@@ -81,7 +119,11 @@ export default function ResetPasswordPage() {
             />
           </View>
 
-          <AuthPrimaryButton title="Reset Password" onPress={handleResetPress} />
+          <AuthPrimaryButton
+            title={isLoading ? "Resetting..." : "Reset Password"}
+            onPress={handleResetPress}
+            disabled={isLoading}
+          />
         </View>
       </View>
     </SafeAreaView>

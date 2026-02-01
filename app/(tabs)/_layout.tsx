@@ -5,10 +5,10 @@ import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 
 export default function TabsLayout() {
-  const session = useAuthStore((state) => state.session);
+  const token = useAuthStore((state) => state.token);
   const hasOnboarded = usePreferencesStore((state) => state.hasOnboarded);
 
-  if (!session) {
+  if (!token) {
     return <Redirect href="/sign-in" />;
   }
 
@@ -23,6 +23,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: '#8BD65E',
         tabBarInactiveTintColor: 'gray',
+        tabBarStyle: {
+          elevation: 0,
+          shadowOpacity: 0,
+          borderTopWidth: 0,
+        },
       }}
     >
       <Tabs.Screen
