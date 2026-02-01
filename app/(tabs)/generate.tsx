@@ -34,7 +34,7 @@ export default function GenerateScreen() {
   const { initialize } = useSubscriptionStore();
   const addToShoppingList = useShoppingListStore((state) => state.addMultiple);
   const toastRef = useRef<ToastRef>(null);
-  
+
   // Storage for manual saving
   const { saveRecipe } = useRecipeStorage();
 
@@ -233,155 +233,216 @@ export default function GenerateScreen() {
     </View>
   );
 
+  const handleStartManual = () => {
+    setTempManualRecipe({
+      id: '', // Empty ID indicates new
+      title: '',
+      description: '',
+      ingredients: [''],
+      steps: [{ step: '1', instruction: '' }],
+      time_minutes: '30',
+      difficulty: 'Medium',
+      servings: '2',
+      calories_per_serving: '0',
+      imageUrl: undefined,
+      collections: [],
+    } as Recipe);
+    setManualModalVisible(true);
+  };
+
+  const handleSaveManual = async (recipe: Recipe) => {
+    try {
+      if (!recipe.title.trim()) {
+        Alert.alert('Error', 'Please provide a title');
+        return;
+      }
+
+      const saved = await saveRecipe(recipe);
+      setManualModalVisible(false);
+
+      // Show success and maybe redirect or show details
+      Alert.alert('Recipe Created', 'Your recipe has been saved to your collection!', [
+        { text: 'View in Collection', onPress: () => {} }, // Router push?
+        { text: 'OK' },
+      ]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-white">
       {/* LOADING OVERLAY */}
       {loading && <ChefLoading status={loadingMessage} />}
-      
-      <ScrollView className="flex-1 px-4 pt-4">
+
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
         {/* Header */}
-        <View className="mb-6">
-          <Text className="font-visby-bold text-3xl text-gray-900">AI Chef ‍🍳</Text>
-          <Text className="mt-1 font-visby text-base text-gray-500">
-            Paste link, upload photos, or create manually!
+        <View className="mb-8 mt-4">
+          <Text className="font-visby-bold text-4xl leading-tight text-gray-900">
+            Create{'\n'}Something <Text className="text-[#CC5544]">Delicious</Text>
+          </Text>
+          <Text className="mt-2 font-visby text-base text-gray-500">
+            Choose how you want to add your new recipe today.
           </Text>
         </View>
 
-        {/* Input Card */}
-        <View className="mb-6 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-          {uploadedFiles.length > 0 ? (
-            /* Multi-File View */
-            <View>
-              <View className="mb-3 flex-row items-center justify-between">
-                <Text className="font-visby-bold text-gray-900">
-                  Selected Media ({uploadedFiles.length}/5)
-                </Text>
-                <TouchableOpacity onPress={() => setUploadedFiles([])}>
-                  <Text className="font-visby text-xs text-red-500">Reset</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Option 1: AI Magic (Expanded) */}
+        <View className="mb-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-100/50">
+          <View className="mb-4 flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#CC5544] bg-gradient-to-tr from-orange-400 to-red-500">
+              <Ionicons name="sparkles" size={20} color="white" />
+            </View>
+            <Text className="font-visby-bold text-xl text-gray-900">Magic Import (AI)</Text>
+          </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-                {uploadedFiles.map((url, index) => (
-                  <View key={index} className="relative mr-3">
+          {uploadedFiles.length > 0 ? (
+            <View className="mb-4">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                {uploadedFiles.map((url, i) => (
+                  <View key={i} className="mr-3 h-20 w-20 overflow-hidden rounded-xl bg-gray-100">
                     <ExpoImage
                       source={{ uri: url }}
-                      style={{ width: 80, height: 80, borderRadius: 12 }}
+                      style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                     />
                     <TouchableOpacity
                       onPress={() => removeFile(url)}
-                      className="absolute -right-2 -top-2 rounded-full bg-black/50 p-1"
+                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1"
                     >
-                      <Ionicons name="close" size={14} color="white" />
+                      <Ionicons name="close" size={10} color="white" />
                     </TouchableOpacity>
                   </View>
                 ))}
-
-                {uploadedFiles.length < 5 && (
-                  <View className="flex-row gap-2">
-                    <TouchableOpacity
-                      onPress={handlePickMedia}
-                      className="h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50"
-                    >
-                      <Ionicons name="images" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleLaunchCamera}
-                      className="h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50"
-                    >
-                      <Ionicons name="camera" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
-                  </View>
-                )}
               </ScrollView>
+              <TouchableOpacity onPress={() => setUploadedFiles([])}>
+                <Text className="text-center font-visby text-xs text-red-500">Reset Selection</Text>
+              </TouchableOpacity>
             </View>
           ) : (
-            /* Empty State: Paste Link OR Upload */
-            <>
-              {/* Opsi 1: Link Input */}
-              <View className="mb-4 rounded-xl bg-gray-50 px-4 py-3">
+            <View className="mb-4 space-y-3">
+              {/* URL Input */}
+              <View className="flex-row items-center rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <Ionicons name="link" size={20} color="#9CA3AF" />
                 <TextInput
-                  placeholder="Paste cooking video/photo link here..."
+                  placeholder="Paste Instagram/TikTok/YouTube link..."
                   placeholderTextColor="#9CA3AF"
                   value={videoUrl}
                   onChangeText={setVideoUrl}
-                  className="font-visby text-base text-gray-900"
+                  className="ml-3 flex-1 font-visby text-gray-900"
                 />
+                {videoUrl.length > 0 && (
+                  <TouchableOpacity onPress={() => setVideoUrl('')}>
+                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
               </View>
 
-              <Text className="mb-4 text-center text-xs text-gray-400">OR</Text>
+              <Text className="text-center font-visby text-xs text-gray-400">- OR -</Text>
 
-              {/* Buttons Row */}
-              <View className="mb-6 flex-row gap-3">
-                {/* Gallery Button */}
+              {/* Media Buttons */}
+              <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={handlePickMedia}
-                  disabled={uploading}
-                  className="flex-1 flex-row items-center justify-center rounded-xl border border-gray-200 bg-white py-4 shadow-sm"
+                  className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-gray-50 py-3 active:bg-gray-100"
                 >
-                  <Ionicons
-                    name="images-outline"
-                    size={24}
-                    color="#666"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text className="font-visby-bold text-gray-600">Gallery</Text>
+                  <Ionicons name="images-outline" size={20} color="#666" />
+                  <Text className="font-visby-bold text-xs text-gray-600">Gallery</Text>
                 </TouchableOpacity>
-
-                {/* Camera Button */}
                 <TouchableOpacity
                   onPress={handleLaunchCamera}
-                  disabled={uploading}
-                  className="flex-1 flex-row items-center justify-center rounded-xl border border-gray-200 bg-white py-4 shadow-sm"
+                  className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-gray-50 py-3 active:bg-gray-100"
                 >
-                  <Ionicons
-                    name="camera-outline"
-                    size={24}
-                    color="#666"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text className="font-visby-bold text-gray-600">Camera</Text>
+                  <Ionicons name="camera-outline" size={20} color="#666" />
+                  <Text className="font-visby-bold text-xs text-gray-600">Camera</Text>
                 </TouchableOpacity>
               </View>
-            </>
+            </View>
           )}
 
-          {/* Button Generate */}
           <TouchableOpacity
             onPress={generate}
             disabled={loading || (uploadedFiles.length === 0 && !videoUrl.trim())}
-            className={`w-full flex-row items-center justify-center rounded-xl py-4 ${loading ? 'bg-gray-300' : 'bg-red-500 shadow-lg shadow-red-200'}`}
+            className={`w-full flex-row items-center justify-center rounded-2xl py-4 shadow-lg ${
+              loading || (uploadedFiles.length === 0 && !videoUrl.trim())
+                ? 'bg-gray-200 shadow-none'
+                : 'bg-[#CC5544] shadow-orange-200'
+            }`}
           >
             {loading ? (
-              <>
-                <ActivityIndicator color="white" className="mr-2" />
-                <Text className="font-visby-bold text-lg text-white">{loadingMessage}</Text>
-              </>
+              <ActivityIndicator color="white" />
             ) : (
               <>
-                <Ionicons name="sparkles" size={20} color="white" style={{ marginRight: 8 }} />
-                <Text className="font-visby-bold text-lg text-white">Generate Recipe Now</Text>
+                <Text className="mr-2 font-visby-bold text-base text-white">Generate Recipe</Text>
+                <Ionicons name="arrow-forward" size={20} color="white" />
               </>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Result Area */}
+        {/* Option 2: Manual Entry */}
+        <TouchableOpacity
+          onPress={handleStartManual}
+          className="active:scale-98 mb-8 flex-row items-center justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-100/50"
+        >
+          <View className="flex-1">
+            <View className="mb-1 flex-row items-center gap-2">
+              <Ionicons name="create-outline" size={22} color="#4B5563" />
+              <Text className="font-visby-bold text-lg text-gray-900">Write Manually</Text>
+            </View>
+            <Text className="font-visby text-sm text-gray-400">
+              Create your own recipe from scratch
+            </Text>
+          </View>
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-50">
+            <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Recently Generated / Result */}
         {currentRecipe && (
-          <View>
+          <View className="mt-4">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-visby-bold text-xl text-gray-900">AI Analysis Result</Text>
+              <Text className="font-visby-bold text-xl text-gray-900">Recent Result</Text>
               <TouchableOpacity onPress={() => setCurrentRecipe(null)}>
-                <Text className="font-visby text-red-500">Close</Text>
+                <Text className="font-visby-bold text-xs text-red-500">Clear</Text>
               </TouchableOpacity>
             </View>
             {renderRecipeCard(currentRecipe)}
           </View>
         )}
-
-        <View className="h-24" />
       </ScrollView>
+
+      {/* Toast */}
+      <Toast ref={toastRef} />
+
+      {/* Manual Creation Modal */}
+      <RecipeDetailModal
+        recipe={tempManualRecipe}
+        visible={manualModalVisible}
+        onClose={() => setManualModalVisible(false)}
+        onUpdate={handleSaveManual}
+        onDelete={() => setManualModalVisible(false)} // Cancel acts as delete for unsaved
+        onShare={() => {}}
+        initialMode="edit"
+      />
+
+      {/* View Generated Recipe Details Modal */}
+      {currentRecipe && (
+        <RecipeDetailModal
+          recipe={currentRecipe}
+          visible={!!currentRecipe}
+          onClose={() => setCurrentRecipe(null)}
+          onUpdate={async (updated) => {
+            // If user edits the generated result, save it
+            await saveRecipe(updated);
+            setCurrentRecipe(null); // Close after save
+            Alert.alert('Saved', 'Recipe saved to your collection.');
+          }}
+          onDelete={() => setCurrentRecipe(null)}
+          onShare={() => {}}
+        />
+      )}
     </SafeAreaView>
   );
 }

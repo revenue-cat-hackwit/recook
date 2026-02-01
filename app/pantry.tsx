@@ -116,34 +116,70 @@ export default function PantryScreen() {
     setAnalyzing(true);
     try {
       // 2. Upload
+      Alert.alert('Uploading', 'Uploading image...');
       const publicUrl = await RecipeService.uploadMedia(result.assets[0].uri);
 
       // 3. Analyze
       Alert.alert('Analyzing', 'AI is detecting food items...');
       const detectedItems = await PantryService.analyzeFromImage(publicUrl);
 
-      if (detectedItems.length === 0) {
-        Alert.alert('No items', "AI couldn't find any food items.");
+      if (!detectedItems || detectedItems.length === 0) {
+        Alert.alert(
+          'No Items Found',
+          "AI couldn't detect any food items in the image. Try taking a clearer photo with better lighting.",
+          [{ text: 'OK' }],
+        );
         return;
       }
 
       // 4. Bulk Insert
       let addedCount = 0;
       for (const item of detectedItems) {
-        await PantryService.addItem({
-          ingredient_name: item.ingredient_name || 'Unknown Item',
-          quantity: item.quantity || '1',
-          category: item.category || 'Other',
-          expiry_date:
-            item.expiry_date || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
-        });
-        addedCount++;
+        try {
+          await PantryService.addItem({
+            ingredient_name: item.ingredient_name || 'Unknown Item',
+            quantity: item.quantity || '1',
+            category: item.category || 'Other',
+            expiry_date:
+              item.expiry_date || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+          });
+          addedCount++;
+        } catch (itemError) {
+          console.error('Failed to add item:', item.ingredient_name, itemError);
+          // Continue with other items
+        }
       }
 
-      Alert.alert('Success', `Added ${addedCount} items to your pantry!`);
-      loadPantry();
+      if (addedCount > 0) {
+        Alert.alert(
+          'Success! 🎉',
+          `Added ${addedCount} item${addedCount > 1 ? 's' : ''} to your pantry!`,
+        );
+        loadPantry();
+      } else {
+        Alert.alert('Error', 'Failed to add items to pantry. Please try again.');
+      }
     } catch (e: any) {
-      Alert.alert('Scan Failed', e.message);
+      console.error('Scan Error:', e);
+
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+
+      // Handle specific error types
+      if (e.message?.includes('not authenticated')) {
+        errorMessage = 'Please log in to use this feature.';
+      } else if (e.message?.includes('Edge Function')) {
+        errorMessage =
+          'AI service is temporarily unavailable. Please try again later or add items manually.';
+      } else if (e.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (e.message) {
+        errorMessage = e.message;
+      }
+
+      Alert.alert('Scan Failed', errorMessage, [
+        { text: 'Add Manually', onPress: () => setIsModalOpen(true) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
     } finally {
       setAnalyzing(false);
     }

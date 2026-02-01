@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, FlatList, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, FlatList, Alert, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,8 @@ import * as Haptics from 'expo-haptics';
 
 export default function ShoppingListScreen() {
   const router = useRouter();
-  const { items, toggleItem, removeItem, clearAll, sync } = useShoppingListStore();
+  const { items, toggleItem, removeItem, clearAll, sync, addItem } = useShoppingListStore();
+  const [newItemText, setNewItemText] = useState('');
 
   useEffect(() => {
     // Sync on load
@@ -19,6 +20,13 @@ export default function ShoppingListScreen() {
   const handleToggle = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleItem(id);
+  };
+
+  const handleAddManual = async () => {
+    if (!newItemText.trim()) return;
+    Haptics.selectionAsync();
+    await addItem(newItemText.trim());
+    setNewItemText('');
   };
 
   const handleClear = () => {
@@ -84,6 +92,26 @@ export default function ShoppingListScreen() {
           >
             Clear
           </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Add Item Input */}
+      <View className="flex-row items-center gap-3 border-b border-gray-50 bg-white px-6 py-4">
+        <TextInput
+          value={newItemText}
+          onChangeText={setNewItemText}
+          placeholder="Add milk, eggs, ..."
+          placeholderTextColor="#9CA3AF"
+          className="flex-1 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 font-visby text-gray-900"
+          onSubmitEditing={handleAddManual}
+          returnKeyType="done"
+        />
+        <TouchableOpacity
+          onPress={handleAddManual}
+          disabled={!newItemText.trim()}
+          className={`rounded-xl p-3 ${newItemText.trim() ? 'bg-black' : 'bg-gray-200'}`}
+        >
+          <Ionicons name="add" size={24} color={newItemText.trim() ? 'white' : '#999'} />
         </TouchableOpacity>
       </View>
 

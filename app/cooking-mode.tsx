@@ -34,6 +34,7 @@ export default function CookingModeScreen() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [fontSize, setFontSize] = useState(24);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Voice State
   const [isListening, setIsListening] = useState(false);
@@ -91,7 +92,7 @@ export default function CookingModeScreen() {
         console.error('Failed to parse recipe', e);
       }
     }
-  }, [params]);
+  }, [params.recipe]); // Fixed: use specific param instead of entire params object
 
   // --- 3. COMMAND PROCESSOR ---
   const handleVoiceCommand = async (audioUri: string) => {
@@ -162,13 +163,19 @@ export default function CookingModeScreen() {
       setCurrentStepIndex((prev) => prev + 1);
       setTranscript('Next Step');
     } else {
+      // Completed!
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setTranscript('Bon Appétit!');
+      setIsCompleted(true);
+      setTranscript('Recipe Complete! 🎉');
     }
   };
 
   const handlePrev = () => {
-    if (currentStepIndex > 0) {
+    if (isCompleted) {
+      // If on completion screen, go back to last step
+      setIsCompleted(false);
+      setCurrentStepIndex(totalSteps - 1);
+    } else if (currentStepIndex > 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setCurrentStepIndex((prev) => prev - 1);
       setTranscript('Previous Step');
@@ -199,76 +206,144 @@ export default function CookingModeScreen() {
 
       {/* Main Content */}
       <View className="flex-1 justify-center px-8">
-        <View className="mb-6 flex-row items-center">
-          <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-500">
-            <Text className="font-visby-bold text-xl text-black">{currentStep?.step}</Text>
+        {isCompleted ? (
+          /* COMPLETION SCREEN */
+          <View className="items-center">
+            <View className="mb-4 h-24 w-24 items-center justify-center rounded-full bg-green-500/20">
+              <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+            </View>
+            <Text className="mb-2 text-center font-visby-bold text-3xl text-white">
+              Bon Appétit!
+            </Text>
+            <Text className="mb-8 text-center font-visby text-lg text-gray-400">
+              You&apos;ve completed {recipe?.title}
+            </Text>
+
+            {/* Stats */}
+            <View className="mb-8 w-full rounded-2xl bg-gray-800 p-6">
+              <View className="flex-row justify-around">
+                <View className="items-center">
+                  <View className="mb-2 h-12 w-12 items-center justify-center rounded-full bg-blue-500/20">
+                    <Ionicons name="time-outline" size={24} color="#3B82F6" />
+                  </View>
+                  <Text className="font-visby-bold text-lg text-white">
+                    {recipe?.time_minutes}m
+                  </Text>
+                  <Text className="text-xs text-gray-500">Cook Time</Text>
+                </View>
+                <View className="items-center">
+                  <View className="mb-2 h-12 w-12 items-center justify-center rounded-full bg-orange-500/20">
+                    <Ionicons name="flame-outline" size={24} color="#F97316" />
+                  </View>
+                  <Text className="font-visby-bold text-lg text-white">
+                    {recipe?.calories_per_serving}
+                  </Text>
+                  <Text className="text-xs text-gray-500">Calories</Text>
+                </View>
+                <View className="items-center">
+                  <View className="mb-2 h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
+                    <Ionicons name="checkmark-done-outline" size={24} color="#22C55E" />
+                  </View>
+                  <Text className="font-visby-bold text-lg text-white">{totalSteps}</Text>
+                  <Text className="text-xs text-gray-500">Steps</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="w-full gap-3">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="w-full items-center rounded-2xl bg-green-500 py-4 shadow-lg shadow-green-900"
+              >
+                <Text className="font-visby-bold text-lg text-black">Back to Recipe</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/recipes')}
+                className="w-full items-center rounded-2xl border border-gray-700 bg-gray-800 py-4"
+              >
+                <Text className="font-visby-bold text-lg text-white">Go to My Kitchen</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <Text className="font-visby text-lg text-gray-400">
-            Step {currentStepIndex + 1} of {totalSteps}
-          </Text>
-        </View>
+        ) : (
+          /* NORMAL STEP VIEW */
+          <>
+            <View className="mb-6 flex-row items-center">
+              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-500">
+                <Text className="font-visby-bold text-xl text-black">{currentStep?.step}</Text>
+              </View>
+              <Text className="font-visby text-lg text-gray-400">
+                Step {currentStepIndex + 1} of {totalSteps}
+              </Text>
+            </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text
-            style={{ fontSize: fontSize, lineHeight: fontSize * 1.5 }}
-            className="text-left font-visby-bold text-white"
-          >
-            {currentStep?.instruction}
-          </Text>
-        </ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text
+                style={{ fontSize: fontSize, lineHeight: fontSize * 1.5 }}
+                className="text-left font-visby-bold text-white"
+              >
+                {currentStep?.instruction}
+              </Text>
+            </ScrollView>
 
-        {/* Transcript Overlay */}
-        <View className="h-10 items-center justify-center">
-          {transcript ? (
-            <Text className="font-visby text-sm text-green-400">{transcript}</Text>
-          ) : null}
-        </View>
+            {/* Transcript Overlay */}
+            <View className="h-10 items-center justify-center">
+              {transcript ? (
+                <Text className="font-visby text-sm text-green-400">{transcript}</Text>
+              ) : null}
+            </View>
+          </>
+        )}
       </View>
 
       {/* Controls */}
-      <View className="px-6 pb-8">
-        {/* Mic / Listen Button */}
-        <View className="mb-8 items-center">
-          <TouchableOpacity activeOpacity={0.8} onPress={toggleListening} disabled={isProcessing}>
-            <Animated.View
-              style={[micAnimatedStyle]}
-              className={`h-20 w-20 items-center justify-center rounded-full ${isListening ? 'bg-red-500' : 'bg-gray-700'}`}
-            >
-              {isProcessing ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Ionicons
-                  name={isListening ? 'mic' : 'mic-off'}
-                  size={32}
-                  color={isListening ? 'white' : '#999'}
-                />
-              )}
-            </Animated.View>
-          </TouchableOpacity>
-          <Text className="mt-3 text-xs text-gray-500">
-            {isListening ? "Say 'Next', 'Back', or 'Stop'" : 'Tap mic to enable Voice Control'}
-          </Text>
-        </View>
-
-        <View className="flex-row justify-between gap-4">
-          <TouchableOpacity
-            onPress={handlePrev}
-            disabled={currentStepIndex === 0}
-            className={`flex-1 items-center justify-center rounded-2xl py-6 ${currentStepIndex === 0 ? 'bg-gray-800 opacity-50' : 'bg-gray-800'}`}
-          >
-            <Ionicons name="chevron-back" size={32} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleNext}
-            className="flex-[2] items-center justify-center rounded-2xl bg-green-500 py-6 shadow-lg shadow-green-900"
-          >
-            <Text className="font-visby-bold text-xl text-black">
-              {currentStepIndex === totalSteps - 1 ? 'Finish!' : 'Next'}
+      {!isCompleted && (
+        <View className="px-6 pb-8">
+          {/* Mic / Listen Button */}
+          <View className="mb-8 items-center">
+            <TouchableOpacity activeOpacity={0.8} onPress={toggleListening} disabled={isProcessing}>
+              <Animated.View
+                style={[micAnimatedStyle]}
+                className={`h-20 w-20 items-center justify-center rounded-full ${isListening ? 'bg-red-500' : 'bg-gray-700'}`}
+              >
+                {isProcessing ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Ionicons
+                    name={isListening ? 'mic' : 'mic-off'}
+                    size={32}
+                    color={isListening ? 'white' : '#999'}
+                  />
+                )}
+              </Animated.View>
+            </TouchableOpacity>
+            <Text className="mt-3 text-xs text-gray-500">
+              {isListening ? "Say 'Next', 'Back', or 'Stop'" : 'Tap mic to enable Voice Control'}
             </Text>
-          </TouchableOpacity>
+          </View>
+
+          <View className="flex-row justify-between gap-4">
+            <TouchableOpacity
+              onPress={handlePrev}
+              disabled={currentStepIndex === 0}
+              className={`flex-1 items-center justify-center rounded-2xl py-6 ${currentStepIndex === 0 ? 'bg-gray-800 opacity-50' : 'bg-gray-800'}`}
+            >
+              <Ionicons name="chevron-back" size={32} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleNext}
+              className="flex-[2] items-center justify-center rounded-2xl bg-green-500 py-6 shadow-lg shadow-green-900"
+            >
+              <Text className="font-visby-bold text-xl text-black">
+                {currentStepIndex === totalSteps - 1 ? 'Finish!' : 'Next'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }

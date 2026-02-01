@@ -63,10 +63,10 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
       if (initialMode === 'edit' && recipe) {
         setIsEditing(true);
         setTempRecipe({
-            ...recipe,
-            ingredients: recipe.ingredients || [],
-            steps: recipe.steps || [],
-            tips: recipe.tips || '',
+          ...recipe,
+          ingredients: recipe.ingredients || [],
+          steps: recipe.steps || [],
+          tips: recipe.tips || '',
         });
       } else {
         setIsEditing(false);
@@ -78,42 +78,40 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   }, [visible, recipe, initialMode]);
 
   const toggleCollection = (collectionName: string) => {
-      // Determine target recipe (temp if editing, else current recipe)
-      const target = isEditing ? tempRecipe : recipe;
-      if (!target) return;
+    // Determine target recipe (temp if editing, else current recipe)
+    const target = isEditing ? tempRecipe : recipe;
+    if (!target) return;
 
-      const currentCollections = target.collections || [];
-      let newCollections;
-      
-      if (currentCollections.includes(collectionName)) {
-          newCollections = currentCollections.filter(c => c !== collectionName);
-      } else {
-          newCollections = [...currentCollections, collectionName];
-      }
-      
-      const updated = { ...target, collections: newCollections };
-      
-      if (isEditing) {
-          setTempRecipe(updated);
-      } else {
-          // If viewing, save immediately
-          onUpdate(updated)
-            .then(() => Haptics.selectionAsync())
-            .catch(e => console.error(e));
-      }
+    const currentCollections = target.collections || [];
+    let newCollections;
+
+    if (currentCollections.includes(collectionName)) {
+      newCollections = currentCollections.filter((c) => c !== collectionName);
+    } else {
+      newCollections = [...currentCollections, collectionName];
+    }
+
+    const updated = { ...target, collections: newCollections };
+
+    if (isEditing) {
+      setTempRecipe(updated);
+    } else {
+      // If viewing, save immediately
+      onUpdate(updated)
+        .then(() => Haptics.selectionAsync())
+        .catch((e) => console.error(e));
+    }
   };
-  
+
   const handleAddNewCollection = () => {
-      if (!newCollectionName.trim()) {
-          setIsAddingCollection(false);
-          return;
-      }
-      toggleCollection(newCollectionName.trim());
-      setNewCollectionName('');
+    if (!newCollectionName.trim()) {
       setIsAddingCollection(false);
+      return;
+    }
+    toggleCollection(newCollectionName.trim());
+    setNewCollectionName('');
+    setIsAddingCollection(false);
   };
-
-
 
   const handleGenerateClick = async () => {
     if (onGenerateFull && recipe) {
@@ -142,7 +140,72 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
     }
   };
 
+  const hasUnsavedChanges = () => {
+    if (!tempRecipe || !recipe) return false;
+
+    // Compare key fields to detect changes
+    return (
+      tempRecipe.title !== recipe.title ||
+      tempRecipe.description !== recipe.description ||
+      JSON.stringify(tempRecipe.ingredients) !== JSON.stringify(recipe.ingredients) ||
+      JSON.stringify(tempRecipe.steps) !== JSON.stringify(recipe.steps) ||
+      tempRecipe.time_minutes !== recipe.time_minutes ||
+      tempRecipe.servings !== recipe.servings ||
+      tempRecipe.difficulty !== recipe.difficulty ||
+      tempRecipe.calories_per_serving !== recipe.calories_per_serving ||
+      tempRecipe.tips !== recipe.tips
+    );
+  };
+
   const handleCancelEdit = () => {
+    // If creating a new recipe (no ID), cancel means close modal
+    if (!recipe?.id) {
+      // Check if user has entered any data
+      const hasData =
+        tempRecipe &&
+        (tempRecipe.title?.trim() ||
+          tempRecipe.description?.trim() ||
+          (tempRecipe.ingredients && tempRecipe.ingredients.some((i) => i.trim())) ||
+          (tempRecipe.steps && tempRecipe.steps.some((s) => s.instruction?.trim())));
+
+      if (hasData) {
+        Alert.alert(
+          'Discard Recipe?',
+          'You have unsaved changes. Are you sure you want to discard this recipe?',
+          [
+            { text: 'Keep Editing', style: 'cancel' },
+            {
+              text: 'Discard',
+              style: 'destructive',
+              onPress: () => {
+                onClose();
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      onClose();
+      return;
+    }
+
+    // If editing existing recipe, check for unsaved changes
+    if (hasUnsavedChanges()) {
+      Alert.alert('Unsaved Changes', 'You have unsaved changes. Do you want to discard them?', [
+        { text: 'Keep Editing', style: 'cancel' },
+        {
+          text: 'Discard Changes',
+          style: 'destructive',
+          onPress: () => {
+            setIsEditing(false);
+            setTempRecipe(null);
+          },
+        },
+      ]);
+      return;
+    }
+
     setIsEditing(false);
     setTempRecipe(null);
   };
@@ -153,7 +216,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
         Alert.alert('Missing Info', 'Please give your recipe a title!');
         return;
       }
-      
+
       await onUpdate(tempRecipe);
       setIsEditing(false);
     }
@@ -220,35 +283,35 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
         <View className="h-[90%] rounded-t-3xl bg-white p-6 dark:bg-[#1A1A1A]">
           <View className="mb-4 flex-row items-center justify-between">
             {isEditing ? (
-                <>
-                  <Text className="flex-1 font-visby-bold text-xl text-gray-900 dark:text-white">
-                    Editing Recipe...
-                  </Text>
-                  <View className="flex-row gap-2">
-                    <TouchableOpacity
-                      onPress={handleSaveEdit}
-                      className="rounded-full bg-green-500 p-2"
-                    >
-                      <Ionicons name="checkmark" size={24} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleCancelEdit}
-                      className="rounded-full bg-red-100 p-2"
-                    >
-                      <Ionicons name="close" size={24} color="red" />
-                    </TouchableOpacity>
-                  </View>
-                </>
+              <>
+                <Text className="flex-1 font-visby-bold text-2xl text-gray-900 dark:text-white">
+                  {tempRecipe?.id ? 'Edit Recipe' : 'New Recipe'}
+                </Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={handleSaveEdit}
+                    className="rounded-full bg-green-500 p-2"
+                  >
+                    <Ionicons name="checkmark" size={24} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleCancelEdit}
+                    className="rounded-full bg-red-100 p-2"
+                  >
+                    <Ionicons name="close" size={24} color="red" />
+                  </TouchableOpacity>
+                </View>
+              </>
             ) : (
               <View className="flex-1 flex-row justify-end">
                 <TouchableOpacity
-                    onPress={() => {
-                      onClose();
-                      setIsEditing(false);
-                    }}
-                    className="rounded-full bg-gray-100 p-2 dark:bg-gray-800"
-                  >
-                    <Ionicons name="close" size={24} color={isDark ? 'white' : 'black'} />
+                  onPress={() => {
+                    onClose();
+                    setIsEditing(false);
+                  }}
+                  className="rounded-full bg-gray-100 p-2 dark:bg-gray-800"
+                >
+                  <Ionicons name="close" size={24} color={isDark ? 'white' : 'black'} />
                 </TouchableOpacity>
               </View>
             )}
@@ -258,7 +321,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* HERO MEDIA */}
             <View className="mb-6 items-center">
               <TouchableOpacity
-                onPress={isEditing ? pickImage : undefined}
+                onPress={isEditing || !displayRecipe.imageUrl ? pickImage : undefined}
                 activeOpacity={1}
                 disabled={!isEditing && isDirectVideo}
               >
@@ -305,12 +368,17 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                           contentFit="cover"
                         />
                       ) : (
-                        <View className="h-full w-full items-center justify-center bg-orange-50 dark:bg-orange-900/20">
-                          <Ionicons name="restaurant" size={40} color="#F97316" />
+                        <View className="h-full w-full items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-800">
+                          <View className="items-center">
+                            <Ionicons name="camera-outline" size={48} color="#9CA3AF" />
+                            <Text className="mt-2 font-visby-bold text-sm text-gray-400 dark:text-gray-500">
+                              Tap to Add Cover Photo
+                            </Text>
+                          </View>
                         </View>
                       )}
 
-                      {isEditing && (
+                      {isEditing && displayRecipe.imageUrl && (
                         <View className="absolute inset-0 items-center justify-center bg-black/30">
                           <Ionicons name="camera" size={30} color="white" />
                           <Text className="mt-1 font-visby-bold text-xs text-white">
@@ -326,69 +394,81 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
             {/* VIEW MODE TITLE & ACTIONS */}
             {!isEditing && (
-                <View className="mb-6">
-                    <Text className="mb-3 font-visby-bold text-3xl text-gray-900 dark:text-white leading-tight">
-                        {displayRecipe.title}
+              <View className="mb-6">
+                <Text className="mb-3 font-visby-bold text-3xl leading-tight text-gray-900 dark:text-white">
+                  {displayRecipe.title}
+                </Text>
+
+                <View className="flex-row gap-4">
+                  {/* Collection */}
+                  <TouchableOpacity
+                    onPress={() => setShowCollectionSelector(true)}
+                    className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
+                  >
+                    <Ionicons
+                      name="folder-open-outline"
+                      size={20}
+                      color={isDark ? 'white' : 'black'}
+                    />
+                    <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">Save</Text>
+                  </TouchableOpacity>
+
+                  {/* Share */}
+                  <TouchableOpacity
+                    onPress={() => onShare(displayRecipe)}
+                    className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
+                  >
+                    <Ionicons
+                      name="share-social-outline"
+                      size={20}
+                      color={isDark ? 'white' : 'black'}
+                    />
+                    <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">
+                      Share
                     </Text>
-                    
-                    <View className="flex-row gap-4">
-                        {/* Collection */}
-                        <TouchableOpacity 
-                            onPress={() => setShowCollectionSelector(true)}
-                            className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
-                        >
-                            <Ionicons name="folder-open-outline" size={20} color={isDark ? "white" : "black"} />
-                            <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">Save</Text>
-                        </TouchableOpacity>
+                  </TouchableOpacity>
 
-                        {/* Share */}
-                        <TouchableOpacity 
-                            onPress={() => onShare(displayRecipe)}
-                            className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
-                        >
-                            <Ionicons name="share-social-outline" size={20} color={isDark ? "white" : "black"} />
-                            <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">Share</Text>
-                        </TouchableOpacity>
-
-                        {/* Edit */}
-                        <TouchableOpacity 
-                            onPress={handleStartEdit}
-                            className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
-                        >
-                            <Ionicons name="pencil-outline" size={20} color={isDark ? "white" : "black"} />
-                            <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">Edit</Text>
-                        </TouchableOpacity>
-                    </View>
+                  {/* Edit */}
+                  <TouchableOpacity
+                    onPress={handleStartEdit}
+                    className="flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800"
+                  >
+                    <Ionicons name="pencil-outline" size={20} color={isDark ? 'white' : 'black'} />
+                    <Text className="ml-2 font-visby-bold text-gray-900 dark:text-white">Edit</Text>
+                  </TouchableOpacity>
                 </View>
+              </View>
             )}
 
             {/* EDITABLE TITLE */}
             {isEditing && (
-              <View className="mb-4">
-                <Text className="mb-1 font-visby-bold text-xs text-gray-400">TITLE</Text>
+              <View className="mb-2 mt-2">
                 <TextInput
                   value={tempRecipe?.title}
                   onChangeText={(txt) =>
                     setTempRecipe((prev) => (prev ? { ...prev, title: txt } : null))
                   }
-                  className="rounded-lg border border-gray-300 p-3 font-visby-bold text-lg text-black dark:border-gray-700 dark:text-white"
+                  className="font-visby-bold text-3xl text-gray-900 dark:text-white"
+                  placeholder="Name your dish..."
                   placeholderTextColor="#9CA3AF"
+                  multiline
                 />
+                <View className="mt-2 h-[1px] w-12 bg-[#CC5544]" />
               </View>
             )}
 
             {/* DESCRIPTION */}
             {isEditing ? (
               <View className="mb-6">
-                <Text className="mb-1 font-visby-bold text-xs text-gray-400">DESCRIPTION</Text>
                 <TextInput
                   value={tempRecipe?.description}
                   onChangeText={(txt) =>
                     setTempRecipe((prev) => (prev ? { ...prev, description: txt } : null))
                   }
                   multiline
-                  className="h-24 rounded-lg border border-gray-300 p-3 font-visby text-base text-black dark:border-gray-700 dark:text-white"
+                  className="min-h-[60px] font-visby text-base text-gray-600 dark:text-gray-300"
                   textAlignVertical="top"
+                  placeholder="Describe the taste, texture, or story behind this recipe..."
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -400,56 +480,74 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
             {/* Stats */}
             {isEditing && (
-                <TouchableOpacity
-                    onPress={async () => {
-                        if (!tempRecipe?.ingredients || tempRecipe.ingredients.length === 0) {
-                            Alert.alert('Error', 'Please add ingredients first!');
-                            return;
-                        }
-                        
-                        // Show simple loading feedback (could be better state)
-                        const originalText = "Calculating..."; 
-                        // You might want a dedicated loading state, but let's use Haptics for now
-                        Haptics.selectionAsync();
-                        
-                        try {
-                            // Find 'RecipeService' import - (Assuming it's available or need to add logic)
-                            // Since we didn't import RecipeService in the scope above in the original file view, 
-                            // we need to ensure it is imported. 
-                            // *Wait*, RecipeService is NOT imported in the file currently (based on previous ViewFile).
-                            // I need to add the import in a separate edit or assume it's there.
-                            // I will use a separate edit to add the import first if needed but let's assume I can dynamic import or use existing.
-                            // Actually, I should check imports. 
-                            
-                            // Let's assume I'll add the logic inside the button for now or define the handler outside.
-                            const { RecipeService } = require('@/lib/services/recipeService');
-                            
-                            Alert.alert('Calculating...', 'AI is estimating nutrition facts based on ingredients...');
-                            const result = await RecipeService.calculateNutrition(tempRecipe.ingredients, tempRecipe.servings || '1');
-                            
-                            setTempRecipe(prev => prev ? ({
-                                ...prev,
-                                time_minutes: result.time_minutes,
-                                calories_per_serving: result.calories_per_serving
-                            }) : null);
-                            
-                            Alert.alert('Done', `Estimated: ${result.calories_per_serving} kcal, ${result.time_minutes} mins`);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        } catch (e) {
-                             Alert.alert('Error', 'Failed to calculate nutrition');
-                        }
-                    }}
-                    className="mb-2 flex-row items-center justify-center rounded-lg bg-indigo-50 py-2 dark:bg-indigo-900/20"
-                >
-                    <Ionicons name="calculator-outline" size={16} color="#4F46E5" style={{marginRight: 6}} />
-                    <Text className="font-visby-bold text-xs text-indigo-600 dark:text-indigo-400">
-                        Auto-Calculate Nutrition (AI)
-                    </Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!tempRecipe?.ingredients || tempRecipe.ingredients.length === 0) {
+                    Alert.alert('Error', 'Please add ingredients first!');
+                    return;
+                  }
+
+                  // Show simple loading feedback (could be better state)
+                  const originalText = 'Calculating...';
+                  // You might want a dedicated loading state, but let's use Haptics for now
+                  Haptics.selectionAsync();
+
+                  try {
+                    // Find 'RecipeService' import - (Assuming it's available or need to add logic)
+                    // Since we didn't import RecipeService in the scope above in the original file view,
+                    // we need to ensure it is imported.
+                    // *Wait*, RecipeService is NOT imported in the file currently (based on previous ViewFile).
+                    // I need to add the import in a separate edit or assume it's there.
+                    // I will use a separate edit to add the import first if needed but let's assume I can dynamic import or use existing.
+                    // Actually, I should check imports.
+
+                    // Let's assume I'll add the logic inside the button for now or define the handler outside.
+                    const { RecipeService } = require('@/lib/services/recipeService');
+
+                    Alert.alert(
+                      'Calculating...',
+                      'AI is estimating nutrition facts based on ingredients...',
+                    );
+                    const result = await RecipeService.calculateNutrition(
+                      tempRecipe.ingredients,
+                      tempRecipe.servings || '1',
+                    );
+
+                    setTempRecipe((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            time_minutes: result.time_minutes,
+                            calories_per_serving: result.calories_per_serving,
+                          }
+                        : null,
+                    );
+
+                    Alert.alert(
+                      'Done',
+                      `Estimated: ${result.calories_per_serving} kcal, ${result.time_minutes} mins`,
+                    );
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch (e) {
+                    Alert.alert('Error', 'Failed to calculate nutrition');
+                  }
+                }}
+                className="mb-2 flex-row items-center justify-center rounded-lg bg-indigo-50 py-2 dark:bg-indigo-900/20"
+              >
+                <Ionicons
+                  name="calculator-outline"
+                  size={16}
+                  color="#4F46E5"
+                  style={{ marginRight: 6 }}
+                />
+                <Text className="font-visby-bold text-xs text-indigo-600 dark:text-indigo-400">
+                  Auto-Calculate Nutrition (AI)
+                </Text>
+              </TouchableOpacity>
             )}
 
             <View className="mb-6 flex-row justify-between rounded-2xl bg-gray-50 p-4 dark:bg-gray-800">
-              <View className="items-center flex-1">
+              <View className="flex-1 items-center">
                 {isEditing ? (
                   <TextInput
                     value={String(tempRecipe?.time_minutes || '')}
@@ -457,7 +555,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                       setTempRecipe((prev) => (prev ? { ...prev, time_minutes: txt } : null))
                     }
                     keyboardType="numeric"
-                    className="font-visby-bold text-center text-gray-800 dark:text-gray-200 border-b border-gray-300 w-16"
+                    className="w-16 border-b border-gray-300 text-center font-visby-bold text-gray-800 dark:text-gray-200"
                     placeholder="15"
                   />
                 ) : (
@@ -468,15 +566,17 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <Text className="text-xs text-gray-400">Time</Text>
               </View>
               <View className="w-[1px] bg-gray-200 dark:bg-gray-700" />
-              <View className="items-center flex-1">
+              <View className="flex-1 items-center">
                 {isEditing ? (
                   <TextInput
                     value={String(tempRecipe?.calories_per_serving || '')}
                     onChangeText={(txt) =>
-                      setTempRecipe((prev) => (prev ? { ...prev, calories_per_serving: txt } : null))
+                      setTempRecipe((prev) =>
+                        prev ? { ...prev, calories_per_serving: txt } : null,
+                      )
                     }
                     keyboardType="numeric"
-                    className="font-visby-bold text-center text-gray-800 dark:text-gray-200 border-b border-gray-300 w-16"
+                    className="w-16 border-b border-gray-300 text-center font-visby-bold text-gray-800 dark:text-gray-200"
                     placeholder="0"
                   />
                 ) : (
@@ -487,7 +587,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <Text className="text-xs text-gray-400">Calories</Text>
               </View>
               <View className="w-[1px] bg-gray-200 dark:bg-gray-700" />
-              <View className="items-center flex-1">
+              <View className="flex-1 items-center">
                 {isEditing ? (
                   <TextInput
                     value={String(tempRecipe?.servings || '')}
@@ -495,7 +595,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                       setTempRecipe((prev) => (prev ? { ...prev, servings: txt } : null))
                     }
                     keyboardType="numeric"
-                    className="font-visby-bold text-center text-gray-800 dark:text-gray-200 border-b border-gray-300 w-16"
+                    className="w-16 border-b border-gray-300 text-center font-visby-bold text-gray-800 dark:text-gray-200"
                     placeholder="1"
                   />
                 ) : (
@@ -509,56 +609,71 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
             {/* Collections */}
             <View className="mb-6">
-                 {isEditing ? (
-                    <View>
-                        <Text className="mb-2 font-visby-bold text-lg text-gray-900 dark:text-white">Collections</Text>
-                        <View className="flex-row flex-wrap gap-2 mb-2">
-                            {tempRecipe?.collections?.map((name, index) => (
-                                <TouchableOpacity 
-                                    key={index}
-                                    onPress={() => {
-                                        // Remove collection
-                                        const newCol = tempRecipe.collections?.filter((_, i) => i !== index);
-                                        setTempRecipe(prev => prev ? ({ ...prev, collections: newCol }) : null);
-                                    }}
-                                    className="flex-row items-center rounded-full bg-red-100 px-3 py-1 dark:bg-red-900/30"
-                                >
-                                    <Text className="mr-1 text-sm text-red-600 dark:text-red-400">{name}</Text>
-                                    <Ionicons name="close" size={12} color="#EF4444" />
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <View className="flex-row items-center gap-2">
-                            <TextInput 
-                                placeholder="Add to collection"
-                                placeholderTextColor="#9CA3AF"
-                                className="flex-1 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                                onSubmitEditing={(e) => {
-                                    const newCol = e.nativeEvent.text.trim();
-                                    if (newCol && !tempRecipe?.collections?.includes(newCol)) {
-                                        setTempRecipe(prev => prev ? ({ ...prev, collections: [...(prev.collections || []), newCol] }) : null);
-                                    }
-                                }}
-                            />
-                            <TouchableOpacity 
-                                className="rounded-lg bg-gray-200 p-3 dark:bg-gray-700"
-                                onPress={() => Alert.alert('Tip', 'Type a collection name and press enter on keyboard to add.')}
-                            >
-                                <Ionicons name="add" size={20} color={isDark ? "white" : "black"} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                 ) : (
-                    displayRecipe.collections && displayRecipe.collections.length > 0 && (
-                        <View className="flex-row flex-wrap gap-2">
-                            {displayRecipe.collections.map((name, index) => (
-                                <View key={index} className="rounded-full bg-orange-100 px-3 py-1 dark:bg-orange-900/30">
-                                    <Text className="text-xs text-orange-700 dark:text-orange-300">{name}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )
-                 )}
+              {isEditing ? (
+                <View>
+                  <Text className="mb-2 font-visby-bold text-lg text-gray-900 dark:text-white">
+                    Collections
+                  </Text>
+                  <View className="mb-2 flex-row flex-wrap gap-2">
+                    {tempRecipe?.collections?.map((name, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => {
+                          // Remove collection
+                          const newCol = tempRecipe.collections?.filter((_, i) => i !== index);
+                          setTempRecipe((prev) => (prev ? { ...prev, collections: newCol } : null));
+                        }}
+                        className="flex-row items-center rounded-full bg-red-100 px-3 py-1 dark:bg-red-900/30"
+                      >
+                        <Text className="mr-1 text-sm text-red-600 dark:text-red-400">{name}</Text>
+                        <Ionicons name="close" size={12} color="#EF4444" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <TextInput
+                      placeholder="Add to collection"
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                      onSubmitEditing={(e) => {
+                        const newCol = e.nativeEvent.text.trim();
+                        if (newCol && !tempRecipe?.collections?.includes(newCol)) {
+                          setTempRecipe((prev) =>
+                            prev
+                              ? { ...prev, collections: [...(prev.collections || []), newCol] }
+                              : null,
+                          );
+                        }
+                      }}
+                    />
+                    <TouchableOpacity
+                      className="rounded-lg bg-gray-200 p-3 dark:bg-gray-700"
+                      onPress={() =>
+                        Alert.alert(
+                          'Tip',
+                          'Type a collection name and press enter on keyboard to add.',
+                        )
+                      }
+                    >
+                      <Ionicons name="add" size={20} color={isDark ? 'white' : 'black'} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                displayRecipe.collections &&
+                displayRecipe.collections.length > 0 && (
+                  <View className="flex-row flex-wrap gap-2">
+                    {displayRecipe.collections.map((name, index) => (
+                      <View
+                        key={index}
+                        className="rounded-full bg-orange-100 px-3 py-1 dark:bg-orange-900/30"
+                      >
+                        <Text className="text-xs text-orange-700 dark:text-orange-300">{name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )
+              )}
             </View>
 
             {/* Cooking Mode Button */}
@@ -591,24 +706,9 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
                   🛒 Ingredients
                 </Text>
-                {!isEditing ? (
+                {!isEditing && (
                   <TouchableOpacity onPress={handleAddIngredientsToShoppingList}>
                     <Text className="font-visby-bold text-xs text-[#CC5544]">+ Add to List</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setTempRecipe((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              ingredients: [...(prev.ingredients || []), 'New Ingredient'],
-                            }
-                          : null,
-                      );
-                    }}
-                  >
-                    <Text className="font-visby-bold text-xs text-blue-500">+ Add Item</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -649,6 +749,25 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                       </Text>
                     </View>
                   ))}
+
+              {isEditing && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setTempRecipe((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            ingredients: [...(prev.ingredients || []), ''],
+                          }
+                        : null,
+                    );
+                  }}
+                  className="mt-3 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-3 active:bg-gray-100"
+                >
+                  <Ionicons name="add" size={20} color="#6B7280" />
+                  <Text className="ml-2 font-visby-bold text-sm text-gray-600">Add Ingredient</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* GENERATE FULL BUTTON for Placeholder Recipes */}
@@ -692,29 +811,6 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
                   👨‍🍳 Instructions
                 </Text>
-                {isEditing && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const nextStep = (tempRecipe?.steps?.length || 0) + 1;
-                      setTempRecipe((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              steps: [
-                                ...(prev.steps || []),
-                                {
-                                  step: String(nextStep),
-                                  instruction: 'New Step',
-                                },
-                              ],
-                            }
-                          : null,
-                      );
-                    }}
-                  >
-                    <Text className="font-visby-bold text-xs text-blue-500">+ Add Step</Text>
-                  </TouchableOpacity>
-                )}
               </View>
 
               {isEditing
@@ -767,6 +863,34 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                       </Text>
                     </View>
                   ))}
+
+              {isEditing && (
+                <TouchableOpacity
+                  onPress={() => {
+                    const nextStep = (tempRecipe?.steps?.length || 0) + 1;
+                    setTempRecipe((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            steps: [
+                              ...(prev.steps || []),
+                              {
+                                step: String(nextStep),
+                                instruction: '',
+                              },
+                            ],
+                          }
+                        : null,
+                    );
+                  }}
+                  className="mt-3 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 py-3 active:bg-gray-100"
+                >
+                  <Ionicons name="add" size={20} color="#6B7280" />
+                  <Text className="ml-2 font-visby-bold text-sm text-gray-600">
+                    Add Instruction Step
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Tips */}
@@ -795,11 +919,22 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* DELETE */}
             {!isEditing && (
               <TouchableOpacity
-                onPress={() => onDelete(displayRecipe.id!)}
+                onPress={() => {
+                  if (!displayRecipe.id) {
+                    Alert.alert('Error', 'Recipe ID missing!');
+                    return;
+                  }
+                  onDelete(displayRecipe.id);
+                }}
                 className="mb-8 flex-row items-center justify-center rounded-xl border border-red-100 bg-red-50 py-4 dark:border-red-900/30 dark:bg-red-900/20"
               >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" className="mr-2" />
-                <Text className="ml-2 font-visby-bold text-red-500">Delete This Recipe</Text>
+                <Ionicons
+                  name="trash-outline"
+                  size={20}
+                  color="#EF4444"
+                  style={{ marginRight: 8 }}
+                />
+                <Text className="font-visby-bold text-red-500">Delete Recipe</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -811,20 +946,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
         recipe={recipe}
         availableCollections={availableCollections}
         onToggleCollection={toggleCollection}
-        onCreateCollection={(name) => {
-           toggleCollection(name);
-           // Modal handles clearing its own input, we just close it or keep it open?
-           // User usually wants to close after creating? Or maybe check multiple?
-           // The Modal implementation I wrote closes itself? No, it calls onCreateCollection.
-           // I'll leave it open unless user closes it? Or close it?
-           // "Add to collection" usually means add and done? But maybe add to multiple.
-           // The `toggleCollection` adds it.
-           // If I want to close, I call `setShowCollectionSelector(false)`.
-           // Let's keep it open to verify checkmark, or close it?
-           // Based on `handleAddNewCollection` it closed it.
-           // I'll close it.
-           // Actually, `toggleCollection` updates the recipe.
-        }}
+        onCreateCollection={(name) => toggleCollection(name)}
       />
     </Modal>
   );

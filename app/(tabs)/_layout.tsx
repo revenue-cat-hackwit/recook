@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Category, MessageText, VideoPlay, Book, Profile } from 'iconsax-react-native';
 import { useAuthStore } from '@/lib/store/authStore';
 import { usePreferencesStore } from '@/lib/store/preferencesStore';
 import { Redirect, Tabs } from 'expo-router';
@@ -29,14 +29,16 @@ export default function TabsLayout() {
         name="feed"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color, size }) => <Ionicons name="newspaper" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Category size={size} color={color} variant="Outline" />,
         }}
       />
       <Tabs.Screen
         name="chatbot"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <MessageText size={size} color={color} variant="Outline" />
+          ),
           headerShown: true,
           headerShadowVisible: false,
         }}
@@ -45,7 +47,9 @@ export default function TabsLayout() {
         name="generate"
         options={{
           title: 'Generate',
-          tabBarIcon: ({ color, size }) => <Ionicons name="videocam" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <VideoPlay size={size} color={color} variant="Outline" />
+          ),
         }}
       />
       <Tabs.Screen
@@ -53,14 +57,14 @@ export default function TabsLayout() {
         options={{
           title: 'Kitchen',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Book size={size} color={color} variant="Outline" />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Profile size={size} color={color} variant="Outline" />,
         }}
       />
     </Tabs>

@@ -76,19 +76,39 @@ export const PantryService = {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase.functions.invoke('analyze-pantry-image', {
-      body: { imageUrl },
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-pantry-image', {
+        body: { imageUrl },
+      });
 
-    if (error) {
-      console.error('Analyze Pantry Error:', error);
-      throw error;
+      if (error) {
+        console.error('Analyze Pantry Error:', error);
+
+        // Provide more specific error messages
+        if (error.message?.includes('FunctionsHttpError')) {
+          throw new Error(
+            'AI service is temporarily unavailable. The backend function may not be deployed or is experiencing issues.',
+          );
+        }
+
+        throw new Error(error.message || 'Failed to analyze image');
+      }
+
+      if (!data) {
+        throw new Error('No response from AI service');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to analyze image');
+      }
+
+      return data.data || [];
+    } catch (error: any) {
+      // Re-throw with clearer message
+      if (error.message) {
+        throw error;
+      }
+      throw new Error('Failed to analyze pantry image. Please try again.');
     }
-
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to analyze image');
-    }
-
-    return data.data;
   },
 };
