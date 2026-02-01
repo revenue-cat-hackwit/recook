@@ -90,7 +90,7 @@ export const SubscriptionCard = () => {
             </View>
 
             <TouchableOpacity onPress={handlePresentPaywall} className="w-full">
-              <View className="flex-row items-center justify-between rounded-2xl bg-[#CC5544] p-4 shadow-lg shadow-red-200">
+              <View className="flex-row items-center justify-between rounded-2xl bg-[#8BD65E] p-4 shadow-lg shadow-green-200">
                 <View>
                   <Text className="font-visby-bold text-lg text-white">Upgrade to Pro</Text>
                   <Text className="font-visby text-xs text-white/80">

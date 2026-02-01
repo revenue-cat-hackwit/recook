@@ -123,10 +123,13 @@ export default function Feed() {
               </View>
             </View>
           </View>
-          <TouchableOpacity className="relative rounded-full border border-gray-100 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
+          <TouchableOpacity
+            onPress={() => router.push('/notifications')}
+            className="relative rounded-full border border-gray-100 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800"
+          >
             <Ionicons name="notifications-outline" size={22} color={isDark ? 'white' : 'black'} />
             {recipeCount > 0 && (
-              <View className="absolute right-0 top-0 h-3 w-3 rounded-full border border-white bg-red-500 dark:border-gray-800" />
+              <View className="absolute right-0 top-0 h-3 w-3 rounded-full border border-white bg-[#8BD65E] dark:border-gray-800" />
             )}
           </TouchableOpacity>
         </View>
@@ -177,7 +180,7 @@ export default function Feed() {
       {/* Main Feed */}
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#CC5544" />
+          <ActivityIndicator size="large" color="#8BD65E" />
         </View>
       ) : (
         <ScrollView
@@ -222,7 +225,7 @@ export default function Feed() {
                   />
                 ))}
 
-                <View className="mb-4 h-[200px] items-center justify-center rounded-2xl bg-[#CC5544] p-4">
+                <View className="mb-4 h-[200px] items-center justify-center rounded-2xl bg-[#8BD65E] p-4">
                   <Ionicons name="sparkles" size={32} color="white" />
                   <Text className="mt-2 text-center font-visby-bold text-lg text-white">
                     Generate Recipe?
@@ -231,7 +234,7 @@ export default function Feed() {
                     onPress={() => router.push('/(tabs)/generate')}
                     className="mt-3 rounded-full bg-white px-4 py-2"
                   >
-                    <Text className="font-visby-bold text-xs text-[#CC5544]">Start Cooking</Text>
+                    <Text className="font-visby-bold text-xs text-[#8BD65E]">Start Cooking</Text>
                   </TouchableOpacity>
                 </View>
               </View>

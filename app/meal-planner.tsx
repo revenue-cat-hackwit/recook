@@ -49,7 +49,7 @@ export default function MealPlannerScreen() {
   if (!isReady) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#CC5544" />
+        <ActivityIndicator size="large" color="#8BD65E" />
       </SafeAreaView>
     );
   }
@@ -146,7 +146,7 @@ function MealPlannerContent() {
   const [isAutoPlanModalOpen, setIsAutoPlanModalOpen] = useState(false);
 
   const handleGeneratePlan = () => {
-      setIsAutoPlanModalOpen(true);
+    setIsAutoPlanModalOpen(true);
   };
 
   const handleConfirmPlan = async (prefs: any) => {
@@ -157,12 +157,12 @@ function MealPlannerContent() {
       setIsAutoPlanModalOpen(false);
       loadData();
     } catch (e: any) {
-      console.error("Auto Plan Error:", e);
+      console.error('Auto Plan Error:', e);
       let errorMsg = e.message || 'Something went wrong.';
-      
+
       // Clean up common technical prefixes if present
       errorMsg = errorMsg.replace('Server Error: ', '');
-      
+
       Alert.alert('Oops!', errorMsg);
     } finally {
       setLoading(false);
@@ -289,7 +289,6 @@ function MealPlannerContent() {
         accent: '#8B5CF6',
         icon: '#8B5CF6',
       },
-
     };
 
     const colors = colorSchemes[type as keyof typeof colorSchemes] || colorSchemes.breakfast;
@@ -406,42 +405,57 @@ function MealPlannerContent() {
 
                     {/* Meta Info */}
                     <View className="mt-auto">
-                        {/* Type/Collections */}
-                        {item.recipe.collections && item.recipe.collections.length > 0 && (
-                            <View className="flex-row mb-1.5 flex-wrap">
-                                {item.recipe.collections.slice(0, 3).map((tag, idx) => (
-                                    <View key={idx} className="mr-1.5 mb-1 rounded-md bg-gray-100 px-1.5 py-0.5">
-                                        <Text className="font-visby text-[10px] text-gray-500 uppercase tracking-wide">{tag}</Text>
-                                    </View>
-                                ))}
+                      {/* Type/Collections */}
+                      {item.recipe.collections && item.recipe.collections.length > 0 && (
+                        <View className="mb-1.5 flex-row flex-wrap">
+                          {item.recipe.collections.slice(0, 3).map((tag, idx) => (
+                            <View
+                              key={idx}
+                              className="mb-1 mr-1.5 rounded-md bg-gray-100 px-1.5 py-0.5"
+                            >
+                              <Text className="font-visby text-[10px] uppercase tracking-wide text-gray-500">
+                                {tag}
+                              </Text>
                             </View>
-                        )}
-
-                        <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center">
-                                <View className="mr-3 flex-row items-center">
-                                    <Ionicons name="time-outline" size={14} color={colors.accent} />
-                                    <Text className="ml-1 font-visby-bold text-xs" style={{ color: colors.accent }}>
-                                    {item.recipe.time_minutes || 30}m
-                                    </Text>
-                                </View>
-                                <View className="flex-row items-center">
-                                    <Ionicons name="flame-outline" size={14} color={colors.accent} />
-                                    <Text className="ml-1 font-visby-bold text-xs" style={{ color: colors.accent }}>
-                                    {item.recipe.calories_per_serving || 200} cal <Text className="font-visby text-[10px] opacity-80">/ 1 srv</Text>
-                                    </Text>
-                                </View>
-                            </View>
-                            
-                            {/* Yield/Difficulty */}
-                             {item.recipe.difficulty && (
-                                <View className={`rounded-full px-2 py-0.5 ${colors.bg}`}>
-                                <Text className="font-visby text-[10px]" style={{ color: colors.accent }}>
-                                    {item.recipe.difficulty}
-                                </Text>
-                                </View>
-                            )}
+                          ))}
                         </View>
+                      )}
+
+                      <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center">
+                          <View className="mr-3 flex-row items-center">
+                            <Ionicons name="time-outline" size={14} color={colors.accent} />
+                            <Text
+                              className="ml-1 font-visby-bold text-xs"
+                              style={{ color: colors.accent }}
+                            >
+                              {item.recipe.time_minutes || 30}m
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center">
+                            <Ionicons name="flame-outline" size={14} color={colors.accent} />
+                            <Text
+                              className="ml-1 font-visby-bold text-xs"
+                              style={{ color: colors.accent }}
+                            >
+                              {item.recipe.calories_per_serving || 200} cal{' '}
+                              <Text className="font-visby text-[10px] opacity-80">/ 1 srv</Text>
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Yield/Difficulty */}
+                        {item.recipe.difficulty && (
+                          <View className={`rounded-full px-2 py-0.5 ${colors.bg}`}>
+                            <Text
+                              className="font-visby text-[10px]"
+                              style={{ color: colors.accent }}
+                            >
+                              {item.recipe.difficulty}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -484,10 +498,10 @@ function MealPlannerContent() {
             <TouchableOpacity
               onPress={handleGeneratePlan}
               disabled={loading}
-              className="rounded-full bg-gradient-to-r from-orange-400 to-red-500 p-2.5 shadow-md"
+              className="rounded-full bg-gradient-to-r from-green-400 to-green-600 p-2.5 shadow-md"
               style={{
-                backgroundColor: loading ? '#E5E7EB' : '#CC5544',
-                shadowColor: '#CC5544',
+                backgroundColor: loading ? '#E5E7EB' : '#8BD65E',
+                shadowColor: '#8BD65E',
                 shadowOpacity: 0.3,
                 shadowRadius: 6,
               }}
@@ -521,13 +535,13 @@ function MealPlannerContent() {
                     }}
                     className={`h-20 w-16 items-center justify-center rounded-2xl ${
                       isSelected
-                        ? 'border-2 border-[#CC5544] bg-red-50'
+                        ? 'border-2 border-[#8BD65E] bg-green-50'
                         : 'border border-gray-200 bg-white'
                     }`}
                     style={
                       isSelected
                         ? {
-                            shadowColor: '#CC5544',
+                            shadowColor: '#8BD65E',
                             shadowOpacity: 0.2,
                             shadowRadius: 6,
                             shadowOffset: { width: 0, height: 2 },
@@ -538,20 +552,20 @@ function MealPlannerContent() {
                   >
                     <Text
                       className={`mb-1 font-visby text-xs ${
-                        isSelected ? 'text-[#CC5544]' : 'text-gray-500'
+                        isSelected ? 'text-[#8BD65E]' : 'text-gray-500'
                       }`}
                     >
                       {getDayName(date)}
                     </Text>
                     <Text
                       className={`font-visby-bold text-2xl ${
-                        isSelected ? 'text-[#CC5544]' : isToday ? 'text-[#CC5544]' : 'text-gray-800'
+                        isSelected ? 'text-[#8BD65E]' : isToday ? 'text-[#8BD65E]' : 'text-gray-800'
                       }`}
                     >
                       {date.getDate()}
                     </Text>
                     {isToday && !isSelected && (
-                      <View className="mt-1 h-1.5 w-1.5 rounded-full bg-[#CC5544]" />
+                      <View className="mt-1 h-1.5 w-1.5 rounded-full bg-[#8BD65E]" />
                     )}
                   </Pressable>
                 );
@@ -564,7 +578,7 @@ function MealPlannerContent() {
           className="flex-1"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
         >
-          <View className="bg-gradient-to-b from-white to-transparent px-5 pb-2 pt-4 flex-row justify-between items-center">
+          <View className="flex-row items-center justify-between bg-gradient-to-b from-white to-transparent px-5 pb-2 pt-4">
             <Text className="font-visby-bold text-xs uppercase tracking-wider text-gray-400">
               {selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -572,21 +586,20 @@ function MealPlannerContent() {
                 day: 'numeric',
               })}
             </Text>
-            
+
             {dailyCalories > 0 && (
-                <View className="flex-row items-center bg-orange-100 px-3 py-1 rounded-full">
-                    <Ionicons name="flame" size={14} color="#F97316" />
-                    <Text className="ml-1 font-visby-bold text-xs text-orange-600">
-                        {dailyCalories} kcal
-                    </Text>
-                </View>
+              <View className="flex-row items-center rounded-full bg-orange-100 px-3 py-1">
+                <Ionicons name="flame" size={14} color="#F97316" />
+                <Text className="ml-1 font-visby-bold text-xs text-orange-600">
+                  {dailyCalories} kcal
+                </Text>
+              </View>
             )}
           </View>
 
           {renderMealSection('breakfast', '🍳', 'Breakfast')}
           {renderMealSection('lunch', '🍱', 'Lunch')}
           {renderMealSection('dinner', '🍽️', 'Dinner')}
-
 
           <View className="h-20" />
         </ScrollView>
@@ -628,9 +641,9 @@ function MealPlannerContent() {
                       setIsAddModalOpen(false);
                       Router.push('/(tabs)/generate');
                     }}
-                    className="rounded-full bg-[#CC5544] px-8 py-3.5 shadow-lg"
+                    className="rounded-full bg-[#8BD65E] px-8 py-3.5 shadow-lg"
                     style={{
-                      shadowColor: '#CC5544',
+                      shadowColor: '#8BD65E',
                       shadowOpacity: 0.3,
                       shadowRadius: 8,
                     }}
@@ -692,7 +705,7 @@ function MealPlannerContent() {
                         </View>
                       </View>
                       <View className="items-center justify-center px-4">
-                        <View className="rounded-full bg-[#CC5544] p-2">
+                        <View className="rounded-full bg-[#8BD65E] p-2">
                           <Ionicons name="add" size={20} color="white" />
                         </View>
                       </View>
@@ -705,10 +718,10 @@ function MealPlannerContent() {
         </Modal>
 
         <AutoPlanModal
-            visible={isAutoPlanModalOpen}
-            onClose={() => setIsAutoPlanModalOpen(false)}
-            onSubmit={handleConfirmPlan}
-            isLoading={loading}
+          visible={isAutoPlanModalOpen}
+          onClose={() => setIsAutoPlanModalOpen(false)}
+          onSubmit={handleConfirmPlan}
+          isLoading={loading}
         />
       </SafeAreaView>
     </>

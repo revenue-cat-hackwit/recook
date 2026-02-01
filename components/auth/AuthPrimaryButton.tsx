@@ -13,7 +13,7 @@ export default function AuthPrimaryButton({
   containerClassName = '',
   ...pressableProps
 }: AuthPrimaryButtonProps) {
-  const baseClassName = 'items-center justify-center rounded-xl bg-green-500 py-4';
+  const baseClassName = 'items-center justify-center rounded-xl bg-primary py-4';
   const resolvedClassName = `${baseClassName} ${containerClassName}`.trim();
 
   return (

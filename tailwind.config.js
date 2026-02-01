@@ -11,6 +11,9 @@ module.exports = {
         'visby-medium': ['VisbyCF-Medium'],
         'visby-bold': ['VisbyCF-DemiBold'],
       },
+      colors: {
+        primary: '#8BD65E',
+      },
     },
   },
   plugins: [],

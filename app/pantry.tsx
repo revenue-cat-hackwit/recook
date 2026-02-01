@@ -248,7 +248,7 @@ export default function PantryScreen() {
         </TouchableOpacity>
         <Text className="font-visby-bold text-xl text-gray-900">My Pantry 🍎</Text>
         <TouchableOpacity onPress={() => setIsModalOpen(true)}>
-          <Ionicons name="add-circle" size={28} color="#CC5544" />
+          <Ionicons name="add-circle" size={28} color="#8BD65E" />
         </TouchableOpacity>
       </View>
 
@@ -263,7 +263,7 @@ export default function PantryScreen() {
             disabled={analyzing}
             className="mb-6 overflow-hidden rounded-3xl shadow-lg"
             style={{
-              shadowColor: '#CC5544',
+              shadowColor: '#8BD65E',
               shadowOpacity: 0.3,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 4 },
@@ -273,7 +273,7 @@ export default function PantryScreen() {
             <View
               className="p-8"
               style={{
-                backgroundColor: '#CC5544',
+                backgroundColor: '#8BD65E',
               }}
             >
               <View className="items-center">
@@ -310,7 +310,7 @@ export default function PantryScreen() {
         <Text className="mb-3 font-visby-bold text-gray-800">Inventory ({items.length})</Text>
 
         {loading ? (
-          <ActivityIndicator color="#CC5544" />
+          <ActivityIndicator color="#8BD65E" />
         ) : items.length === 0 ? (
           <View className="items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-12">
             <Ionicons name="basket-outline" size={64} color="#D1D5DB" />
@@ -335,8 +335,8 @@ export default function PantryScreen() {
           disabled={analyzing}
           className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full shadow-xl"
           style={{
-            backgroundColor: '#CC5544',
-            shadowColor: '#CC5544',
+            backgroundColor: '#8BD65E',
+            shadowColor: '#8BD65E',
             shadowOpacity: 0.4,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 4 },
@@ -416,7 +416,7 @@ export default function PantryScreen() {
                   className={`flex-1 rounded-xl border p-3 ${daysUntilExpiry === '7' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}
                 >
                   <Text
-                    className={`text-center font-visby-bold ${daysUntilExpiry === '7' ? 'text-green-500' : 'text-gray-500'}`}
+                    className={`text-center font-visby-bold ${daysUntilExpiry === '7' ? 'text-primary' : 'text-gray-500'}`}
                   >
                     1 Week
                   </Text>
@@ -442,7 +442,7 @@ export default function PantryScreen() {
 
               <TouchableOpacity
                 onPress={handleAddItem}
-                className="items-center rounded-full bg-[#CC5544] py-4 shadow-lg shadow-red-200"
+                className="items-center rounded-full bg-[#8BD65E] py-4 shadow-lg shadow-green-200"
               >
                 <Text className="font-visby-bold text-lg text-white">Save to Pantry</Text>
               </TouchableOpacity>

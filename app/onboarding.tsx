@@ -125,7 +125,7 @@ export default function OnboardingScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#CC5544" />
+        <ActivityIndicator size="large" color="#8BD65E" />
       </View>
     );
   }

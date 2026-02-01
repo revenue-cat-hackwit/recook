@@ -197,7 +197,7 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
                 onSubmitEditing={handleSendComment}
               />
               <TouchableOpacity onPress={handleSendComment} disabled={!newComment.trim()}>
-                <Ionicons name="send" size={24} color={newComment.trim() ? '#CC5544' : '#4B5563'} />
+                <Ionicons name="send" size={24} color={newComment.trim() ? '#8BD65E' : '#4B5563'} />
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

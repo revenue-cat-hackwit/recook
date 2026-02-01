@@ -181,13 +181,13 @@ export default function Profile() {
         <View className="mb-6 flex-row justify-center space-x-3">
           <TouchableOpacity
             onPress={() => router.push('/edit-profile')}
-            className="mr-2 flex-1 items-center rounded-lg bg-[#5FD08F] px-8 py-2.5"
+            className="mr-2 flex-1 items-center rounded-lg bg-[#8BD65E] px-8 py-2.5"
           >
             <Text className="font-visby-bold text-base text-white">Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/pantry')}
-            className="w-12 items-center justify-center rounded-lg bg-[#5FD08F] p-2.5"
+            className="w-12 items-center justify-center rounded-lg bg-[#8BD65E] p-2.5"
           >
             <Ionicons name="nutrition-outline" size={20} color="white" />
           </TouchableOpacity>
@@ -229,13 +229,13 @@ export default function Profile() {
               key={tab}
               onPress={() => setActiveTab(tab as any)}
               className={`flex-1 items-center border-b-2 py-3 ${
-                activeTab === tab ? 'border-[#5FD08F]' : 'border-transparent'
+                activeTab === tab ? 'border-[#8BD65E]' : 'border-transparent'
               }`}
             >
               <Text
                 className={`font-visby text-base ${
                   activeTab === tab
-                    ? 'font-bold text-[#5FD08F]'
+                    ? 'font-bold text-[#8BD65E]'
                     : 'text-gray-400 dark:text-gray-500'
                 }`}
               >

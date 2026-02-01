@@ -70,7 +70,7 @@ const ThinkingIndicator = () => {
     <View className="p-4 pb-8 pt-2">
       <View className="mb-2 flex-row items-center">
         <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <Ionicons name="sparkles" size={24} color="#CC5544" />
+          <Ionicons name="sparkles" size={24} color="#8BD65E" />
         </Animated.View>
       </View>
       <Text className="text-right font-visby text-xs text-gray-400">

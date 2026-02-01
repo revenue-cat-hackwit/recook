@@ -201,7 +201,7 @@ export default function CookingModeScreen() {
 
       {/* Progress Bar */}
       <View className="h-2 w-full bg-gray-800">
-        <View style={{ width: `${progress}%` }} className="h-full rounded-r-full bg-green-500" />
+        <View style={{ width: `${progress}%` }} className="h-full rounded-r-full bg-primary" />
       </View>
 
       {/* Main Content */}
@@ -209,8 +209,8 @@ export default function CookingModeScreen() {
         {isCompleted ? (
           /* COMPLETION SCREEN */
           <View className="items-center">
-            <View className="mb-4 h-24 w-24 items-center justify-center rounded-full bg-green-500/20">
-              <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+            <View className="mb-4 h-24 w-24 items-center justify-center rounded-full bg-primary/20">
+              <Ionicons name="checkmark-circle" size={80} color="#8BD65E" />
             </View>
             <Text className="mb-2 text-center font-visby-bold text-3xl text-white">
               Bon Appétit!
@@ -241,8 +241,8 @@ export default function CookingModeScreen() {
                   <Text className="text-xs text-gray-500">Calories</Text>
                 </View>
                 <View className="items-center">
-                  <View className="mb-2 h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
-                    <Ionicons name="checkmark-done-outline" size={24} color="#22C55E" />
+                  <View className="mb-2 h-12 w-12 items-center justify-center rounded-full bg-primary/20">
+                    <Ionicons name="checkmark-done-outline" size={24} color="#8BD65E" />
                   </View>
                   <Text className="font-visby-bold text-lg text-white">{totalSteps}</Text>
                   <Text className="text-xs text-gray-500">Steps</Text>
@@ -254,7 +254,7 @@ export default function CookingModeScreen() {
             <View className="w-full gap-3">
               <TouchableOpacity
                 onPress={() => router.back()}
-                className="w-full items-center rounded-2xl bg-green-500 py-4 shadow-lg shadow-green-900"
+                className="w-full items-center rounded-2xl bg-primary py-4 shadow-lg shadow-green-900"
               >
                 <Text className="font-visby-bold text-lg text-black">Back to Recipe</Text>
               </TouchableOpacity>
@@ -271,7 +271,7 @@ export default function CookingModeScreen() {
           /* NORMAL STEP VIEW */
           <>
             <View className="mb-6 flex-row items-center">
-              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-green-500">
+              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-primary">
                 <Text className="font-visby-bold text-xl text-black">{currentStep?.step}</Text>
               </View>
               <Text className="font-visby text-lg text-gray-400">
@@ -335,7 +335,7 @@ export default function CookingModeScreen() {
 
             <TouchableOpacity
               onPress={handleNext}
-              className="flex-[2] items-center justify-center rounded-2xl bg-green-500 py-6 shadow-lg shadow-green-900"
+              className="flex-[2] items-center justify-center rounded-2xl bg-primary py-6 shadow-lg shadow-green-900"
             >
               <Text className="font-visby-bold text-xl text-black">
                 {currentStepIndex === totalSteps - 1 ? 'Finish!' : 'Next'}

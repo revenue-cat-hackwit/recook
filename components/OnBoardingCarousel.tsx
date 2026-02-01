@@ -87,7 +87,7 @@ export default function OnBoardingCarousel() {
             key={`dot-${index}`}
             className={
               index === activeIndex
-                ? 'h-3 w-3 rounded-full bg-green-500'
+                ? 'h-3 w-3 rounded-full bg-primary'
                 : 'h-3 w-3 rounded-full bg-gray-300'
             }
           />

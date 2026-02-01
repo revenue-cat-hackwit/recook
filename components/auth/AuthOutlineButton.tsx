@@ -9,11 +9,11 @@ type AuthOutlineButtonProps = PressableProps & {
 
 export default function AuthOutlineButton({
   title,
-  titleClassName = 'font-visby-demibold text-base font-semibold text-green-500',
+  titleClassName = 'font-visby-demibold text-base font-semibold text-primary',
   containerClassName = '',
   ...pressableProps
 }: AuthOutlineButtonProps) {
-  const baseClassName = 'items-center justify-center rounded-xl border border-green-500 py-4';
+  const baseClassName = 'items-center justify-center rounded-xl border border-primary py-4';
   const resolvedClassName = `${baseClassName} ${containerClassName}`.trim();
 
   return (

@@ -98,7 +98,7 @@ export default function SignInPage() {
               linkText="Forgot Password?"
               onPress={() => router.push('/forgot-password')}
               containerClassName="self-start"
-              linkClassName="font-visby-medium text-base text-green-500"
+              linkClassName="font-visby-medium text-base text-primary"
             />
           </View>
         </View>

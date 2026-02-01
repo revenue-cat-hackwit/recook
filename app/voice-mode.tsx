@@ -105,7 +105,7 @@ const VoiceOrb = ({ state }: { state: 'idle' | 'listening' | 'processing' | 'spe
       case 'listening':
         return ['#4F46E5', '#3B82F6', '#60A5FA']; // Blue-ish for listening
       case 'speaking':
-        return ['#CC5544', '#F87171', '#FCA5A5']; // Red/Orange (Brand) for AI speaking
+        return ['#8BD65E', '#4ADE80', '#86EFAC']; // Green (Brand) for AI speaking
       case 'processing':
         return ['#9333EA', '#A855F7', '#D8B4FE']; // Purple for thinking
       default:

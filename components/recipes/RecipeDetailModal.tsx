@@ -290,7 +290,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={handleSaveEdit}
-                    className="rounded-full bg-green-500 p-2"
+                    className="rounded-full bg-primary p-2"
                   >
                     <Ionicons name="checkmark" size={24} color="white" />
                   </TouchableOpacity>
@@ -453,7 +453,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                   placeholderTextColor="#9CA3AF"
                   multiline
                 />
-                <View className="mt-2 h-[1px] w-12 bg-[#CC5544]" />
+                <View className="mt-2 h-[1px] w-12 bg-[#8BD65E]" />
               </View>
             )}
 
@@ -623,10 +623,12 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                           const newCol = tempRecipe.collections?.filter((_, i) => i !== index);
                           setTempRecipe((prev) => (prev ? { ...prev, collections: newCol } : null));
                         }}
-                        className="flex-row items-center rounded-full bg-red-100 px-3 py-1 dark:bg-red-900/30"
+                        className="flex-row items-center rounded-full bg-green-100 px-3 py-1 dark:bg-green-900/30"
                       >
-                        <Text className="mr-1 text-sm text-red-600 dark:text-red-400">{name}</Text>
-                        <Ionicons name="close" size={12} color="#EF4444" />
+                        <Text className="mr-1 text-sm text-green-600 dark:text-green-400">
+                          {name}
+                        </Text>
+                        <Ionicons name="close" size={12} color="#8BD65E" />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -677,8 +679,10 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             </View>
 
             {/* Cooking Mode Button */}
+            {/* Cooking Mode Button */}
             {!isEditing && (
               <TouchableOpacity
+                disabled={!displayRecipe.steps || displayRecipe.steps.length === 0}
                 onPress={() => {
                   onClose();
                   router.push({
@@ -686,15 +690,31 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                     params: { recipe: JSON.stringify(displayRecipe) },
                   });
                 }}
-                className="mb-6 flex-row items-center justify-center rounded-xl bg-gray-900 py-4 shadow-md dark:bg-white"
+                className={`mb-6 flex-row items-center justify-center rounded-xl py-4 shadow-md ${
+                  !displayRecipe.steps || displayRecipe.steps.length === 0
+                    ? 'bg-gray-300 dark:bg-gray-800'
+                    : 'bg-gray-900 dark:bg-white'
+                }`}
               >
                 <Ionicons
                   name="play-circle"
                   size={24}
-                  color={isDark ? 'black' : 'white'}
+                  color={
+                    !displayRecipe.steps || displayRecipe.steps.length === 0
+                      ? '#9CA3AF'
+                      : isDark
+                        ? 'black'
+                        : 'white'
+                  }
                   style={{ marginRight: 8 }}
                 />
-                <Text className="font-visby-bold text-base text-white dark:text-black">
+                <Text
+                  className={`font-visby-bold text-base ${
+                    !displayRecipe.steps || displayRecipe.steps.length === 0
+                      ? 'text-gray-500'
+                      : 'text-white dark:text-black'
+                  }`}
+                >
                   Start Cooking Mode
                 </Text>
               </TouchableOpacity>
@@ -711,7 +731,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                 </View>
                 {!isEditing && (
                   <TouchableOpacity onPress={handleAddIngredientsToShoppingList}>
-                    <Text className="font-visby-bold text-xs text-[#CC5544]">+ Add to List</Text>
+                    <Text className="font-visby-bold text-xs text-[#8BD65E]">+ Add to List</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -746,7 +766,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                   ))
                 : (displayRecipe.ingredients || []).map((item, i) => (
                     <View key={i} className="mb-2 flex-row items-start">
-                      <Text className="mr-2 text-red-500">•</Text>
+                      <Text className="mr-2 text-[#8BD65E]">•</Text>
                       <Text className="font-visby text-base text-gray-700 dark:text-gray-300">
                         {item}
                       </Text>
@@ -776,9 +796,12 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* GENERATE FULL BUTTON for Placeholder Recipes */}
             {!isEditing && displayRecipe.steps.length === 0 && onGenerateFull && (
               <View className="mb-6 rounded-xl bg-orange-50 p-4 dark:bg-orange-900/20">
-                <Text className="mb-2 text-center font-visby-bold text-lg text-orange-600 dark:text-orange-400">
-                  ✨ Incomplete Recipe
-                </Text>
+                <View className="mb-2 flex-row items-center justify-center gap-2">
+                  <Ionicons name="sparkles" size={20} color={isDark ? '#FB923C' : '#EA580C'} />
+                  <Text className="font-visby-bold text-lg text-orange-600 dark:text-orange-400">
+                    Incomplete Recipe
+                  </Text>
+                </View>
                 <Text className="mb-4 text-center font-visby text-sm text-gray-500 dark:text-gray-400">
                   This recipe was part of your weekly plan but details haven&apos;t been generated
                   yet.
@@ -903,29 +926,34 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
               )}
             </View>
 
-            {/* Tips */}
+            {/* Tips: Redesigned for Premium Feel */}
             {(isEditing || (displayRecipe.tips && displayRecipe.tips.length > 0)) && (
-              <View className="mb-8 rounded-xl border border-amber-100 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-900/20">
-                <View className="mb-1 flex-row items-center gap-2">
-                  <Ionicons name="bulb-outline" size={20} color={isDark ? '#F59E0B' : '#92400E'} />
-                  <Text className="font-visby-bold text-amber-800 dark:text-amber-500">
-                    Chef&apos;s Tips
+              <View className="mb-8 overflow-hidden rounded-2xl bg-gray-50 dark:bg-gray-800">
+                <View className="flex-row items-center gap-3 border-l-4 border-yellow-500 bg-yellow-500/10 px-4 py-3 dark:bg-yellow-500/20">
+                  <Ionicons name="star" size={18} color="#EAB308" />
+                  <Text className="font-visby-bold text-base text-gray-900 dark:text-white">
+                    Chef&apos;s Secret
                   </Text>
                 </View>
-                {isEditing ? (
-                  <TextInput
-                    value={tempRecipe?.tips}
-                    onChangeText={(txt) =>
-                      setTempRecipe((prev) => (prev ? { ...prev, tips: txt } : null))
-                    }
-                    multiline
-                    className="rounded border border-amber-200 bg-white/50 p-2 text-amber-900 dark:border-amber-900/50 dark:bg-black/20 dark:text-amber-300"
-                  />
-                ) : (
-                  <Text className="font-visby text-amber-700 dark:text-amber-300">
-                    {displayRecipe.tips}
-                  </Text>
-                )}
+
+                <View className="p-4 pt-3">
+                  {isEditing ? (
+                    <TextInput
+                      value={tempRecipe?.tips}
+                      onChangeText={(txt) =>
+                        setTempRecipe((prev) => (prev ? { ...prev, tips: txt } : null))
+                      }
+                      multiline
+                      placeholder="Add a pro tip for this recipe..."
+                      placeholderTextColor="#9CA3AF"
+                      className="min-h-[60px] font-visby text-base leading-relaxed text-gray-600 dark:text-gray-300"
+                    />
+                  ) : (
+                    <Text className="font-visby-italic text-base leading-relaxed text-gray-600 dark:text-gray-300">
+                      &quot;{displayRecipe.tips}&quot;
+                    </Text>
+                  )}
+                </View>
               </View>
             )}
 

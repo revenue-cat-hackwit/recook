@@ -27,8 +27,8 @@ export const ChefLoading = ({ status }: { status: string }) => {
     <View className="absolute inset-0 z-50 flex-1 items-center justify-center bg-white/95">
       <View className="w-[85%] items-center rounded-3xl border border-gray-100 bg-white p-8 shadow-2xl">
         <View className="relative mb-6">
-          <View className="absolute inset-0 animate-ping rounded-full bg-red-100 opacity-20" />
-          <View className="h-24 w-24 items-center justify-center rounded-full border-4 border-red-100 bg-red-50">
+          <View className="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-20" />
+          <View className="h-24 w-24 items-center justify-center rounded-full border-4 border-green-100 bg-green-50">
             <Text className="text-5xl">👨‍🍳</Text>
           </View>
         </View>

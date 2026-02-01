@@ -141,7 +141,7 @@ export const ChatInput = ({
       >
         <View className="h-10 w-10" />
         <View className="flex-1 items-center justify-center gap-2">
-          <ActivityIndicator color="#CC5544" />
+          <ActivityIndicator color="#8BD65E" />
           <Text className="font-visby text-xs text-gray-400">Processing audio...</Text>
         </View>
         <View className="h-10 w-10" />

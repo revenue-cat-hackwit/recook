@@ -12,7 +12,7 @@ export const useRecipeStorage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 50;
 
   useEffect(() => {
     loadRecipes();

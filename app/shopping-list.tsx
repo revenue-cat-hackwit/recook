@@ -53,7 +53,7 @@ export default function ShoppingListScreen() {
     >
       <View
         className={`mr-3 h-6 w-6 items-center justify-center rounded-full border ${
-          item.isChecked ? 'border-green-500 bg-green-500' : 'border-gray-300'
+          item.isChecked ? 'border-primary bg-primary' : 'border-gray-300'
         }`}
       >
         {item.isChecked && <Ionicons name="checkmark" size={16} color="white" />}

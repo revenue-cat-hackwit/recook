@@ -315,7 +315,7 @@ export default function SavedRecipesScreen() {
     if (isLoading) {
       return (
         <View className="mt-20 items-center justify-center">
-          <ActivityIndicator size="large" color="#CC5544" />
+          <ActivityIndicator size="large" color="#8BD65E" />
         </View>
       );
     }
@@ -345,7 +345,7 @@ export default function SavedRecipesScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/(tabs)/generate')}
-          className="flex-row items-center rounded-full bg-red-500 px-6 py-3 shadow-lg shadow-red-200 dark:shadow-none"
+          className="flex-row items-center rounded-full bg-[#8BD65E] px-6 py-3 shadow-lg shadow-green-200 dark:shadow-none"
         >
           <Ionicons name="add-circle" size={20} color="white" style={{ marginRight: 8 }} />
           <Text className="font-visby-bold text-white">Create My First Recipe</Text>
@@ -409,7 +409,7 @@ export default function SavedRecipesScreen() {
             <Ionicons
               name={showSearch ? 'close' : 'search'}
               size={20}
-              color={showSearch ? 'white' : '#CC5544'}
+              color={showSearch ? 'white' : '#8BD65E'}
             />
           </TouchableOpacity>
 
@@ -420,7 +420,7 @@ export default function SavedRecipesScreen() {
             <Ionicons
               name={showMenu ? 'close' : 'grid-outline'}
               size={20}
-              color={showMenu ? (isDark ? 'black' : 'white') : '#CC5544'}
+              color={showMenu ? (isDark ? 'black' : 'white') : '#8BD65E'}
             />
           </TouchableOpacity>
         </View>
@@ -520,7 +520,7 @@ export default function SavedRecipesScreen() {
 
           <TouchableOpacity onPress={() => router.push('/pantry')} className="items-center">
             <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/20">
-              <Ionicons name="basket-outline" size={24} color="#22C55E" />
+              <Ionicons name="basket-outline" size={24} color="#8BD65E" />
             </View>
             <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Pantry</Text>
           </TouchableOpacity>

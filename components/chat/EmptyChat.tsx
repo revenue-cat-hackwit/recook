@@ -5,8 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 export const EmptyChat = () => {
   return (
     <View className="flex-1 items-center justify-center px-8">
-      <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-red-50">
-        <Ionicons name="chatbubbles-outline" size={40} color="#CC5544" />
+      <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-green-50">
+        <Ionicons name="chatbubbles-outline" size={40} color="#8BD65E" />
       </View>
       <Text className="font-visby-demibold mb-2 text-center text-xl text-gray-800">
         Halo, Chef! 👨‍🍳

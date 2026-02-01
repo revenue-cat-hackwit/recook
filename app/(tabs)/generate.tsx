@@ -131,7 +131,7 @@ export default function GenerateScreen() {
           <Ionicons
             name={isBrief ? 'chevron-forward' : 'checkmark-circle'}
             size={22}
-            color={isBrief ? '#FF6B6B' : '#4CAF50'}
+            color={isBrief ? '#FF6B6B' : '#8BD65E'}
           />
         </TouchableOpacity>
       </View>
@@ -170,7 +170,7 @@ export default function GenerateScreen() {
                     toastRef.current?.show('Added to Shopping List', 'success');
                   }}
                 >
-                  <Text className="font-visby-bold text-xs text-[#CC5544]">+ Add to List</Text>
+                  <Text className="font-visby-bold text-xs text-[#8BD65E]">+ Add to List</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -280,7 +280,7 @@ export default function GenerateScreen() {
         {/* Header */}
         <View className="mb-8 mt-4">
           <Text className="font-visby-bold text-4xl leading-tight text-gray-900">
-            Create{'\n'}Something <Text className="text-[#CC5544]">Delicious</Text>
+            Create{'\n'}Something <Text className="text-[#8BD65E]">Delicious</Text>
           </Text>
           <Text className="mt-2 font-visby text-base text-gray-500">
             Choose how you want to add your new recipe today.
@@ -290,7 +290,7 @@ export default function GenerateScreen() {
         {/* Option 1: AI Magic (Expanded) */}
         <View className="mb-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-100/50">
           <View className="mb-4 flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#CC5544] bg-gradient-to-tr from-orange-400 to-red-500">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#8BD65E] bg-gradient-to-tr from-green-400 to-green-600">
               <Ionicons name="sparkles" size={20} color="white" />
             </View>
             <Text className="font-visby-bold text-xl text-gray-900">Magic Import (AI)</Text>
@@ -366,7 +366,7 @@ export default function GenerateScreen() {
             className={`w-full flex-row items-center justify-center rounded-2xl py-4 shadow-lg ${
               loading || (uploadedFiles.length === 0 && !videoUrl.trim())
                 ? 'bg-gray-200 shadow-none'
-                : 'bg-[#CC5544] shadow-orange-200'
+                : 'bg-[#8BD65E] shadow-green-200'
             }`}
           >
             {loading ? (

@@ -26,62 +26,37 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({ name, count, ima
       return <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode="cover" />;
     }
 
-    // 4 Images: 2x2 Grid
-    if (images.length >= 4) {
+    // 2+ Images: Always 2x2 Grid
+    if (images.length >= 2) {
+      // Ensure we have exactly 4 images for the grid by repeating if necessary
+      const gridImages = [...images];
+      let i = 0;
+      while (gridImages.length < 4) {
+        gridImages.push(images[i % images.length]);
+        i++;
+      }
+
       return (
         <View className="h-full w-full">
           <View className="flex-1 flex-row gap-0.5">
             <View className="flex-1">
-              <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: gridImages[0] }} className="h-full w-full" resizeMode="cover" />
             </View>
             <View className="flex-1">
-              <Image source={{ uri: images[1] }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: gridImages[1] }} className="h-full w-full" resizeMode="cover" />
             </View>
           </View>
           <View className="flex-1 flex-row gap-0.5 pt-0.5">
             <View className="flex-1">
-              <Image source={{ uri: images[2] }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: gridImages[2] }} className="h-full w-full" resizeMode="cover" />
             </View>
             <View className="flex-1">
-              <Image source={{ uri: images[3] }} className="h-full w-full" resizeMode="cover" />
+              <Image source={{ uri: gridImages[3] }} className="h-full w-full" resizeMode="cover" />
             </View>
           </View>
         </View>
       );
     }
-
-    // 3 Images: Airbnb style - Large left, two small right
-    if (images.length === 3) {
-      return (
-        <View className="h-full w-full flex-row">
-          {/* Left Large Image */}
-          <View className="w-1/2 pr-0.5">
-            <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode="cover" />
-          </View>
-          {/* Right Small Images */}
-          <View className="w-1/2 gap-0.5 pl-0.5">
-            <View className="flex-1">
-              <Image source={{ uri: images[1] }} className="h-full w-full" resizeMode="cover" />
-            </View>
-            <View className="flex-1">
-              <Image source={{ uri: images[2] }} className="h-full w-full" resizeMode="cover" />
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    // 2 Images
-    return (
-      <View className="h-full w-full flex-row gap-0.5">
-        <View className="flex-1">
-          <Image source={{ uri: images[0] }} className="h-full w-full" resizeMode="cover" />
-        </View>
-        <View className="flex-1">
-          <Image source={{ uri: images[1] }} className="h-full w-full" resizeMode="cover" />
-        </View>
-      </View>
-    );
   };
 
   return (

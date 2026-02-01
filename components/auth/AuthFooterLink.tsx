@@ -16,7 +16,7 @@ export default function AuthFooterLink({
   onPress,
   containerClassName = 'flex-row items-center justify-center',
   textClassName = 'font-visby-medium text-base text-gray-500',
-  linkClassName = 'font-visby-demibold text-base font-semibold text-green-500',
+  linkClassName = 'font-visby-demibold text-base font-semibold text-primary',
 }: AuthFooterLinkProps) {
   return (
     <View className={containerClassName}>
