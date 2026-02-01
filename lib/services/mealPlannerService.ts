@@ -6,7 +6,7 @@ export interface MealPlan {
   user_id: string;
   recipe_id: string;
   date: string; // YYYY-MM-DD
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal_type: 'breakfast' | 'lunch' | 'dinner';
   recipe: Recipe;
 }
 
@@ -24,6 +24,7 @@ export const MealPlannerService = {
           id,
           title,
           ingredients,
+          steps,
           image_url,
           time_minutes,
           calories_per_serving,
@@ -31,7 +32,8 @@ export const MealPlannerService = {
           difficulty,
           servings,
           tips,
-          source_url
+          source_url,
+          collections
         )
       `,
       )
@@ -57,6 +59,7 @@ export const MealPlannerService = {
         servings: rawRecipe.servings,
         tips: rawRecipe.tips,
         sourceUrl: rawRecipe.source_url,
+        collections: rawRecipe.collections || [],
       };
 
       return {
@@ -100,7 +103,10 @@ export const MealPlannerService = {
   /**
    * Auto-Generate Weekly Plan via AI
    */
-  async generateWeeklyPlan(startDate: string): Promise<void> {
+   async generateWeeklyPlan(
+    startDate: string, 
+    preferences?: { goal?: string; dietType?: string; allergies?: string; calories?: string }
+   ): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('Not authenticated');
 
@@ -127,7 +133,10 @@ export const MealPlannerService = {
         Authorization: `Bearer ${token}`, // Send User Token for RLS
         apikey: supabaseAnonKey,
       },
-      body: JSON.stringify({ startDate }),
+      body: JSON.stringify({ 
+          startDate,
+          customPreferences: preferences 
+      }),
     });
 
     if (!response.ok) {

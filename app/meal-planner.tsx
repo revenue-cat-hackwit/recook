@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, router as Router, useFocusEffect } from 'expo-router';
 import { MealPlannerService, MealPlan } from '@/lib/services/mealPlannerService';
+import { AutoPlanModal, AutoPlanPreferences } from '@/components/mealplanner/AutoPlanModal';
 import { RecipeService } from '@/lib/services/recipeService';
 import { Recipe } from '@/lib/types';
 import { Image } from 'expo-image';
@@ -109,6 +110,19 @@ function MealPlannerContent() {
     loadData();
   }, [loadData]);
 
+  // Calculate Daily Calories
+  const dailyCalories = useMemo(() => {
+    const targetDate = formatDate(selectedDate);
+    return mealPlans
+      .filter((p) => p.date === targetDate)
+      .reduce((acc, curr) => {
+        // Extract number from string like "400 kcal" or just "400"
+        const calString = curr.recipe.calories_per_serving?.replace(/[^0-9]/g, '') || '0';
+        const cal = parseInt(calString, 10);
+        return acc + (isNaN(cal) ? 0 : cal);
+      }, 0);
+  }, [mealPlans, selectedDate]);
+
   const handleAddMeal = async (recipe: Recipe) => {
     try {
       await MealPlannerService.addMealPlan(recipe.id!, formatDate(selectedDate), targetMealType);
@@ -128,29 +142,31 @@ function MealPlannerContent() {
     }
   };
 
-  const handleGeneratePlan = async () => {
-    Alert.alert(
-      'Auto-Plan Week',
-      "AI will generate a 7-day meal plan based on your profile. This will overwrite today's plan onwards.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Plan it! ✨',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await MealPlannerService.generateWeeklyPlan(formatDate(new Date()));
-              Alert.alert('Success', 'Weekly meal plan created!');
-              loadData();
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-    );
+  // Auto Plan Modal State
+  const [isAutoPlanModalOpen, setIsAutoPlanModalOpen] = useState(false);
+
+  const handleGeneratePlan = () => {
+      setIsAutoPlanModalOpen(true);
+  };
+
+  const handleConfirmPlan = async (prefs: any) => {
+    setLoading(true);
+    try {
+      await MealPlannerService.generateWeeklyPlan(formatDate(new Date()), prefs);
+      Alert.alert('Success', 'Weekly meal plan created!');
+      setIsAutoPlanModalOpen(false);
+      loadData();
+    } catch (e: any) {
+      console.error("Auto Plan Error:", e);
+      let errorMsg = e.message || 'Something went wrong.';
+      
+      // Clean up common technical prefixes if present
+      errorMsg = errorMsg.replace('Server Error: ', '');
+      
+      Alert.alert('Oops!', errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Recipe Detail Modal Handlers
@@ -273,7 +289,7 @@ function MealPlannerContent() {
         accent: '#8B5CF6',
         icon: '#8B5CF6',
       },
-      snack: { bg: 'bg-amber-50', border: 'border-amber-200', accent: '#F59E0B', icon: '#F59E0B' },
+
     };
 
     const colors = colorSchemes[type as keyof typeof colorSchemes] || colorSchemes.breakfast;
@@ -389,32 +405,43 @@ function MealPlannerContent() {
                     </View>
 
                     {/* Meta Info */}
-                    <View className="mt-auto flex-row items-center">
-                      <View className="mr-4 flex-row items-center">
-                        <Ionicons name="time-outline" size={14} color={colors.accent} />
-                        <Text
-                          className="ml-1 font-visby-bold text-xs"
-                          style={{ color: colors.accent }}
-                        >
-                          {item.recipe.time_minutes || 30} min
-                        </Text>
-                      </View>
-                      <View className="mr-4 flex-row items-center">
-                        <Ionicons name="flame-outline" size={14} color={colors.accent} />
-                        <Text
-                          className="ml-1 font-visby-bold text-xs"
-                          style={{ color: colors.accent }}
-                        >
-                          {item.recipe.calories_per_serving || 200} cal
-                        </Text>
-                      </View>
-                      {item.recipe.difficulty && (
-                        <View className={`rounded-full px-2 py-1 ${colors.bg}`}>
-                          <Text className="font-visby text-xs" style={{ color: colors.accent }}>
-                            {item.recipe.difficulty}
-                          </Text>
+                    <View className="mt-auto">
+                        {/* Type/Collections */}
+                        {item.recipe.collections && item.recipe.collections.length > 0 && (
+                            <View className="flex-row mb-1.5 flex-wrap">
+                                {item.recipe.collections.slice(0, 3).map((tag, idx) => (
+                                    <View key={idx} className="mr-1.5 mb-1 rounded-md bg-gray-100 px-1.5 py-0.5">
+                                        <Text className="font-visby text-[10px] text-gray-500 uppercase tracking-wide">{tag}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center">
+                                <View className="mr-3 flex-row items-center">
+                                    <Ionicons name="time-outline" size={14} color={colors.accent} />
+                                    <Text className="ml-1 font-visby-bold text-xs" style={{ color: colors.accent }}>
+                                    {item.recipe.time_minutes || 30}m
+                                    </Text>
+                                </View>
+                                <View className="flex-row items-center">
+                                    <Ionicons name="flame-outline" size={14} color={colors.accent} />
+                                    <Text className="ml-1 font-visby-bold text-xs" style={{ color: colors.accent }}>
+                                    {item.recipe.calories_per_serving || 200} cal <Text className="font-visby text-[10px] opacity-80">/ 1 srv</Text>
+                                    </Text>
+                                </View>
+                            </View>
+                            
+                            {/* Yield/Difficulty */}
+                             {item.recipe.difficulty && (
+                                <View className={`rounded-full px-2 py-0.5 ${colors.bg}`}>
+                                <Text className="font-visby text-[10px]" style={{ color: colors.accent }}>
+                                    {item.recipe.difficulty}
+                                </Text>
+                                </View>
+                            )}
                         </View>
-                      )}
                     </View>
                   </View>
                 </View>
@@ -494,7 +521,7 @@ function MealPlannerContent() {
                     }}
                     className={`h-20 w-16 items-center justify-center rounded-2xl ${
                       isSelected
-                        ? 'border-2 border-[#CC5544] bg-[#CC5544]/10'
+                        ? 'border-2 border-[#CC5544] bg-red-50'
                         : 'border border-gray-200 bg-white'
                     }`}
                     style={
@@ -537,7 +564,7 @@ function MealPlannerContent() {
           className="flex-1"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
         >
-          <View className="bg-gradient-to-b from-white to-transparent px-5 pb-2 pt-4">
+          <View className="bg-gradient-to-b from-white to-transparent px-5 pb-2 pt-4 flex-row justify-between items-center">
             <Text className="font-visby-bold text-xs uppercase tracking-wider text-gray-400">
               {selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -545,12 +572,21 @@ function MealPlannerContent() {
                 day: 'numeric',
               })}
             </Text>
+            
+            {dailyCalories > 0 && (
+                <View className="flex-row items-center bg-orange-100 px-3 py-1 rounded-full">
+                    <Ionicons name="flame" size={14} color="#F97316" />
+                    <Text className="ml-1 font-visby-bold text-xs text-orange-600">
+                        {dailyCalories} kcal
+                    </Text>
+                </View>
+            )}
           </View>
 
           {renderMealSection('breakfast', '🍳', 'Breakfast')}
           {renderMealSection('lunch', '🍱', 'Lunch')}
           {renderMealSection('dinner', '🍽️', 'Dinner')}
-          {renderMealSection('snack', '🍪', 'Snacks')}
+
 
           <View className="h-20" />
         </ScrollView>
@@ -667,6 +703,13 @@ function MealPlannerContent() {
             )}
           </SafeAreaView>
         </Modal>
+
+        <AutoPlanModal
+            visible={isAutoPlanModalOpen}
+            onClose={() => setIsAutoPlanModalOpen(false)}
+            onSubmit={handleConfirmPlan}
+            isLoading={loading}
+        />
       </SafeAreaView>
     </>
   );

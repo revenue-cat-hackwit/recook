@@ -182,7 +182,8 @@ export const RecipeService = {
         calories_per_serving: recipe.calories_per_serving,
         tips: recipe.tips,
         source_url: recipe.sourceUrl,
-        image_url: recipe.imageUrl, // Capture image for feed
+        image_url: recipe.imageUrl,
+        collections: recipe.collections || [],
       })
       .select()
       .single();
@@ -212,6 +213,10 @@ export const RecipeService = {
         steps: recipe.steps,
         tips: recipe.tips,
         image_url: recipe.imageUrl,
+        collections: recipe.collections,
+        time_minutes: recipe.time_minutes,
+        calories_per_serving: recipe.calories_per_serving,
+        servings: recipe.servings,
       })
       .eq('id', recipe.id);
 
@@ -246,6 +251,7 @@ export const RecipeService = {
       sourceUrl: row.source_url,
       imageUrl: row.image_url,
       createdAt: row.created_at,
+      collections: row.collections || [],
     }));
   },
 
@@ -256,4 +262,67 @@ export const RecipeService = {
     const { error } = await supabase.from('user_recipes').delete().eq('id', id);
     if (error) throw error;
   },
+
+  /**
+   * Calculate Nutrition using AI
+   */
+  async calculateNutrition(ingredients: string[], servings: string): Promise<{ time_minutes: string, calories_per_serving: string }> {
+      const prompt = `
+      I have a recipe with these ingredients:
+      ${ingredients.join('\n- ')}
+      
+      Servings: ${servings}
+
+      Please estimate:
+      1. Total cooking/prep time in minutes (approx).
+      2. Calories per serving.
+
+      Return ONLY a valid JSON object like this:
+      {
+        "time_minutes": "15",
+        "calories_per_serving": "300"
+      }
+      Do not include markdown formatting or extra text.
+      `;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 100,
+            temperature: 0.2
+          }),
+      });
+
+      if (!response.ok) {
+          throw new Error('Failed to calculate nutrition');
+      }
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+
+      // Parse JSON from content
+      let content = data.data.message.trim();
+      // Clean markdown if present
+      if (content.startsWith('```json')) {
+          content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (content.startsWith('```')) {
+          content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+     }
+
+      try {
+          const result = JSON.parse(content);
+          return {
+              time_minutes: String(result.time_minutes || '15'),
+              calories_per_serving: String(result.calories_per_serving || '0')
+          };
+      } catch (e) {
+          console.error("Failed to parse AI nutrition response", content);
+          throw new Error("Could not parse nutrition data");
+      }
+  }
 };

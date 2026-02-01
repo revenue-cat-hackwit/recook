@@ -13,6 +13,7 @@ import {
   Platform,
   UIManager,
   Keyboard,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,9 +25,12 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useColorScheme } from 'nativewind';
 
-// Import extracted components
+// Components
 import { RecipeCard } from '@/components/recipes/RecipeCard';
 import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
+import { CollectionCard } from '@/components/recipes/CollectionCard';
+import { CollectionSelectorModal } from '@/components/recipes/CollectionSelectorModal';
+import { CreateCollectionModal } from '@/components/recipes/CreateCollectionModal';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -35,22 +39,20 @@ if (Platform.OS === 'android') {
   }
 }
 
-const RECIPES_STORAGE_KEY = 'pirinku_local_recipes_v1';
-
 export default function SavedRecipesScreen() {
   const router = useRouter();
   const {
-    savedRecipes,
-    isLoading,
-    isLoadingMore,
-    hasMore,
-    refreshRecipes,
-    loadMore,
-    deleteRecipe,
-    saveRecipe,
-    updateRecipe,
+      savedRecipes,
+      isLoading,
+      isLoadingMore,
+      hasMore,
+      refreshRecipes,
+      loadMore,
+      deleteRecipe,
+      saveRecipe,
+      updateRecipe,
   } = useRecipeStorage();
-
+  
   // Use generator hook for completing recipes
   const { completeRecipe } = useRecipeGenerator();
 
@@ -63,6 +65,31 @@ export default function SavedRecipesScreen() {
 
   // Menu state
   const [showMenu, setShowMenu] = useState(false);
+
+  // Manual Creation State
+  const [manualModalVisible, setManualModalVisible] = useState(false);
+  const [tempManualRecipe, setTempManualRecipe] = useState<Recipe | null>(null);
+
+  // Create Collection State
+  const [createCollectionModalVisible, setCreateCollectionModalVisible] = useState(false);
+
+  // Collection Selector (Single Recipe)
+  const [collectionSelectorVisible, setCollectionSelectorVisible] = useState(false);
+  const [recipeForCollection, setRecipeForCollection] = useState<Recipe | null>(null);
+
+  const handleToggleCollection = async (collectionName: string) => {
+      if (!recipeForCollection) return;
+      const current = recipeForCollection.collections || [];
+      let newCol;
+      if (current.includes(collectionName)) {
+          newCol = current.filter(c => c !== collectionName);
+      } else {
+          newCol = [...current, collectionName];
+      }
+      const updated = { ...recipeForCollection, collections: newCol };
+      setRecipeForCollection(updated);
+      await updateRecipe(updated);
+  };
 
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -79,11 +106,11 @@ export default function SavedRecipesScreen() {
     await refreshRecipes();
     setRefreshing(false);
   };
-
+  
   const toggleSearch = () => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (showMenu) setShowMenu(false); // Close menu if open
+    if (showMenu) setShowMenu(false);
 
     if (showSearch) {
       Keyboard.dismiss();
@@ -103,51 +130,119 @@ export default function SavedRecipesScreen() {
     setShowMenu(!showMenu);
   };
 
-  // Filter recipes based on search query
+  // VIEW MODE: Collections vs List
+  const [viewMode, setViewMode] = useState<'collections' | 'list'>('collections');
+  const [activeCollection, setActiveCollection] = useState<string | null>(null);
+
+  // Group recipes into collections
+  // RENAMED from 'collections' to 'recipeGroups' to avoid ReferenceError with property names
+  const recipeGroups = useMemo(() => {
+    const groups: Record<string, Recipe[]> = {};
+    
+    // Default collection
+    groups['All Recipes'] = savedRecipes;
+
+    // Group by collections
+    savedRecipes.forEach(recipe => {
+        if (recipe.collections && recipe.collections.length > 0) {
+            recipe.collections.forEach(collection => {
+                if (!groups[collection]) groups[collection] = [];
+                groups[collection].push(recipe);
+            });
+        }
+    });
+
+    return Object.entries(groups).map(([name, recipes]) => ({
+        name,
+        count: recipes.length,
+        thumbnails: recipes
+            .filter(r => r.imageUrl)
+            .map(r => r.imageUrl!)
+            .slice(0, 3)
+    }));
+  }, [savedRecipes]);
+
+  // Filter logic based on active collection
   const filteredRecipes = useMemo(() => {
-    if (!searchQuery.trim()) return savedRecipes;
-    const query = searchQuery.toLowerCase();
-    return savedRecipes.filter(
-      (recipe) =>
-        recipe.title.toLowerCase().includes(query) ||
-        (recipe.description && recipe.description.toLowerCase().includes(query)) ||
-        (recipe.ingredients && recipe.ingredients.some((ing) => ing.toLowerCase().includes(query))),
-    );
-  }, [savedRecipes, searchQuery]);
+    let result = savedRecipes;
+    
+    // 1. Filter by Collection
+    if (activeCollection && activeCollection !== 'All Recipes') {
+        result = result.filter(r => r.collections?.includes(activeCollection));
+    }
 
-  // --- Handlers passed to Modal/Components ---
+    // 2. Filter by Search
+    if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        result = result.filter(
+        (recipe) =>
+            recipe.title.toLowerCase().includes(query) ||
+            (recipe.description && recipe.description.toLowerCase().includes(query)) ||
+            (recipe.ingredients && recipe.ingredients.some((ing) => ing.toLowerCase().includes(query))),
+        );
+    }
+    
+    return result;
+  }, [savedRecipes, searchQuery, activeCollection]);
 
-  const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
-    await updateRecipe(updatedRecipe);
-    setSelectedRecipe(updatedRecipe); // Update modal view if needed
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Success', 'Recipe updated successfully!');
+  // Back handler for collection view
+  const handleBackToCollections = () => {
+    Haptics.selectionAsync();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setViewMode('collections');
+    setActiveCollection(null);
   };
 
-  const handleGenerateFull = async (recipe: Recipe) => {
-    const result = await completeRecipe(recipe);
-    if (result && result.success && result.data) {
-      // Update the list view and modal view with the new data
-      await updateRecipe(result.data);
-      setSelectedRecipe(result.data);
-      Alert.alert('Recipe Completed', 'Your recipe details are ready! 👨‍🍳');
+  const handleCreateCollection = async (name: string, ids: string[]) => {
+    try {
+        const collectionName = name.trim();
+        const updatePromises = ids.map(async (id) => {
+            const recipe = savedRecipes.find(r => r.id === id);
+            if (recipe) {
+                const currentCollections = recipe.collections || [];
+                if (!currentCollections.includes(collectionName)) {
+                    await updateRecipe({
+                        ...recipe,
+                        collections: [...currentCollections, collectionName]
+                    });
+                }
+            }
+        });
+
+        await Promise.all(updatePromises);
+        
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setCreateCollectionModalVisible(false);
+    } catch (e) {
+        console.error(e);
+        Alert.alert('Error', 'Failed to create collection.');
     }
   };
 
-  const handleDeleteRecipe = async (id: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('Delete Recipe', 'Are you sure you want to delete this recipe?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteRecipe(id);
-          if (selectedRecipe?.id === id) setSelectedRecipe(null); // Close modal
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        },
-      },
-    ]);
+  const handleStartManualCreate = () => {
+      const blankRecipe: Recipe = {
+          title: '',
+          description: '',
+          ingredients: [],
+          steps: [],
+          time_minutes: '15',
+          calories_per_serving: '0',
+          servings: '1',
+          difficulty: 'Easy',
+          createdAt: new Date().toISOString(),
+          collections: [],
+      };
+      setTempManualRecipe(blankRecipe);
+      setManualModalVisible(true);
+      setShowMenu(false); // Close menu
+  };
+
+  const handleSaveManual = async (recipe: Recipe) => {
+      await saveRecipe(recipe);
+      setManualModalVisible(false);
+      setTempManualRecipe(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Success', 'Recipe created successfully!');
   };
 
   const handleShareRecipe = async (recipe: Recipe) => {
@@ -168,15 +263,6 @@ export default function SavedRecipesScreen() {
     } catch (error) {
       console.error(error);
     }
-  };
-
-  const renderFooter = () => {
-    if (!isLoadingMore) return <View className="h-24" />;
-    return (
-      <View className="h-24 items-center justify-center p-4">
-        <ActivityIndicator size="small" color="#CC5544" />
-      </View>
-    );
   };
 
   const renderEmpty = () => {
@@ -224,47 +310,67 @@ export default function SavedRecipesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-[#0F0F0F]">
-      <RecipeDetailModal
+       <RecipeDetailModal
         recipe={selectedRecipe}
         visible={!!selectedRecipe}
         onClose={() => setSelectedRecipe(null)}
-        onUpdate={handleUpdateRecipe}
-        onDelete={handleDeleteRecipe}
+        onUpdate={updateRecipe}
+        onDelete={deleteRecipe}
         onShare={handleShareRecipe}
-        onGenerateFull={handleGenerateFull}
+        onGenerateFull={async (r) => { await completeRecipe(r); }}
+        availableCollections={recipeGroups.map(c => c.name).filter(n => n !== 'All Recipes')}
+      />
+      
+      <RecipeDetailModal
+        recipe={tempManualRecipe}
+        visible={manualModalVisible}
+        onClose={() => setManualModalVisible(false)}
+        initialMode="edit"
+        onUpdate={handleSaveManual}
+        onDelete={() => setManualModalVisible(false)}
+        onShare={() => {}}
       />
 
-      <View className="flex-row items-center justify-between px-5 pb-2 pt-4">
-        <Text className="flex-1 font-visby-bold text-3xl text-gray-900 dark:text-white">
-          Recipe Collection 📚
-        </Text>
-        <View className="flex-row gap-3">
-          <TouchableOpacity
-            onPress={toggleSearch}
-            className={`rounded-full border p-2 shadow-sm ${showSearch ? 'border-red-500 bg-red-500' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'}`}
-          >
-            <Ionicons
-              name={showSearch ? 'close' : 'search'}
-              size={20}
-              color={showSearch ? 'white' : '#CC5544'}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={toggleMenu}
-            className={`rounded-full border p-2 shadow-sm ${showMenu ? 'border-black bg-black dark:border-white dark:bg-white' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'}`}
-          >
-            <Ionicons
-              name={showMenu ? 'close' : 'grid-outline'}
-              size={20}
-              color={showMenu ? (isDark ? 'black' : 'white') : '#CC5544'}
-            />
-          </TouchableOpacity>
+       {/* HEADER */}
+       <View className="flex-row items-center justify-between px-5 pb-2 pt-4">
+        <View className="flex-1 flex-row items-center">
+            {viewMode === 'list' && (
+                <TouchableOpacity onPress={handleBackToCollections} className="mr-3">
+                    <Ionicons name="arrow-back" size={24} color={isDark ? "white" : "black"} />
+                </TouchableOpacity>
+            )}
+            <Text className="font-visby-bold text-3xl text-gray-900 dark:text-white">
+            {viewMode === 'list' && activeCollection ? activeCollection : 'My Kitchen 🍳'}
+            </Text>
         </View>
-      </View>
+        
+        <View className="flex-row gap-3">
+             <TouchableOpacity
+                onPress={toggleSearch}
+                className={`rounded-full border p-2 shadow-sm ${showSearch ? 'border-red-500 bg-red-500' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'}`}
+              >
+                <Ionicons
+                  name={showSearch ? 'close' : 'search'}
+                  size={20}
+                  color={showSearch ? 'white' : '#CC5544'}
+                />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={toggleMenu}
+                className={`rounded-full border p-2 shadow-sm ${showMenu ? 'border-black bg-black dark:border-white dark:bg-white' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'}`}
+              >
+                <Ionicons
+                  name={showMenu ? 'close' : 'grid-outline'}
+                  size={20}
+                  color={showMenu ? (isDark ? 'black' : 'white') : '#CC5544'}
+                />
+              </TouchableOpacity>
+        </View>
+       </View>
 
-      {/* QUICK ACTIONS MENU */}
-      {showMenu && (
+       {/* Quick Actions */}
+       {showMenu && (
         <View className="mb-4 flex-row justify-around px-5 pb-2 pt-1">
           <TouchableOpacity onPress={() => router.push('/meal-planner')} className="items-center">
             <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-900/20">
@@ -280,6 +386,15 @@ export default function SavedRecipesScreen() {
               <Ionicons name="basket-outline" size={24} color="#22C55E" />
             </View>
             <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Pantry</Text>
+          </TouchableOpacity>
+          
+           <TouchableOpacity onPress={handleStartManualCreate} className="items-center">
+            <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
+              <Ionicons name="create-outline" size={24} color="#EF4444" />
+            </View>
+            <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
+              Write New
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push('/shopping-list')} className="items-center">
@@ -299,7 +414,7 @@ export default function SavedRecipesScreen() {
           <View className="h-12 flex-row items-center rounded-xl border border-gray-100 bg-white px-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
             <TextInput
-              placeholder="Search recipes, ingredients..."
+              placeholder="Search recipes..."
               placeholderTextColor="#9CA3AF"
               className="h-full flex-1 font-visby text-base text-gray-900 dark:text-white"
               autoFocus
@@ -315,21 +430,74 @@ export default function SavedRecipesScreen() {
         </View>
       )}
 
-      <FlatList
-        data={filteredRecipes}
-        keyExtractor={(item) => item.id || Math.random().toString()}
-        renderItem={({ item }) => (
-          <RecipeCard recipe={item} onPress={() => setSelectedRecipe(item)} />
-        )}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmpty}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-      />
+      {/* VIEW CONTENT */}
+      {viewMode === 'collections' && !searchQuery ? (
+          <ScrollView className="flex-1 px-5 pt-2">
+              <View className="flex-row flex-wrap justify-between pb-10">
+                  {recipeGroups.map((collection, index) => (
+                      <CollectionCard
+                        key={collection.name}
+                        name={collection.name}
+                        count={collection.count}
+                        images={collection.thumbnails}
+                        onPress={() => {
+                            Haptics.selectionAsync();
+                            setActiveCollection(collection.name);
+                            setViewMode('list');
+                        }}
+                      />
+                  ))}
+                  <TouchableOpacity 
+                    onPress={() => setCreateCollectionModalVisible(true)}
+                    className="mb-6 mr-4 aspect-square w-[45%] items-center justify-center rounded-3xl border-2 border-dashed border-gray-300 dark:border-gray-700"
+                   >
+                     <Ionicons name="add" size={40} color={isDark ? "#555" : "#ccc"} />
+                     <Text className="mt-2 font-visby-bold text-gray-400">New Collection</Text>
+                   </TouchableOpacity>
+              </View>
+          </ScrollView>
+      ) : (
+          <FlatList
+            data={filteredRecipes}
+            keyExtractor={(item) => item.id || Math.random().toString()}
+            renderItem={({ item }) => (
+            <RecipeCard 
+                recipe={item} 
+                onPress={() => setSelectedRecipe(item)} 
+                onCollectionPress={() => {
+                    setRecipeForCollection(item);
+                    setCollectionSelectorVisible(true);
+                }}
+            />
+            )}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            // ListFooterComponent={renderFooter}
+            ListEmptyComponent={renderEmpty}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+        />
+      )}
+      
+      <CollectionSelectorModal
+          visible={collectionSelectorVisible}
+          onClose={() => setCollectionSelectorVisible(false)}
+          recipe={recipeForCollection}
+          availableCollections={recipeGroups.map(c => c.name).filter(n => n !== 'All Recipes')}
+          onToggleCollection={handleToggleCollection}
+          onCreateCollection={(name) => {
+              handleToggleCollection(name);
+          }}
+       />
+
+       <CreateCollectionModal
+            visible={createCollectionModalVisible}
+            onClose={() => setCreateCollectionModalVisible(false)}
+            recipes={savedRecipes}
+            onCreate={handleCreateCollection}
+       />
     </SafeAreaView>
   );
 }

@@ -50,6 +50,7 @@ export interface Recipe {
   sourceUrl?: string;
   imageUrl?: string;
   createdAt?: string;
+  collections?: string[];
 }
 
 export interface SubscriptionState {

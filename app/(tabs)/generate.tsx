@@ -25,6 +25,8 @@ import * as Haptics from 'expo-haptics';
 import { ChefLoading } from '@/components/ChefLoading';
 
 import { useRecipeGenerator } from '@/lib/hooks/useRecipeGenerator';
+import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
+import { useRecipeStorage } from '@/lib/hooks/useRecipeStorage';
 
 export default function GenerateScreen() {
   // Dependencies
@@ -32,6 +34,13 @@ export default function GenerateScreen() {
   const { initialize } = useSubscriptionStore();
   const addToShoppingList = useShoppingListStore((state) => state.addMultiple);
   const toastRef = useRef<ToastRef>(null);
+  
+  // Storage for manual saving
+  const { saveRecipe } = useRecipeStorage();
+
+  // Manual Creation State
+  const [manualModalVisible, setManualModalVisible] = useState(false);
+  const [tempManualRecipe, setTempManualRecipe] = useState<Recipe | null>(null);
 
   // Paywall Logic
   const handlePresentPaywall = async () => {
@@ -228,13 +237,13 @@ export default function GenerateScreen() {
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* LOADING OVERLAY */}
       {loading && <ChefLoading status={loadingMessage} />}
-
+      
       <ScrollView className="flex-1 px-4 pt-4">
         {/* Header */}
         <View className="mb-6">
           <Text className="font-visby-bold text-3xl text-gray-900">AI Chef ‍🍳</Text>
           <Text className="mt-1 font-visby text-base text-gray-500">
-            Paste link or upload food photos/videos!
+            Paste link, upload photos, or create manually!
           </Text>
         </View>
 
