@@ -103,10 +103,10 @@ export const MealPlannerService = {
   /**
    * Auto-Generate Weekly Plan via AI
    */
-   async generateWeeklyPlan(
-    startDate: string, 
-    preferences?: { goal?: string; dietType?: string; allergies?: string; calories?: string }
-   ): Promise<void> {
+  async generateWeeklyPlan(
+    startDate: string,
+    preferences?: { goal?: string; dietType?: string; allergies?: string; calories?: string },
+  ): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('Not authenticated');
 
@@ -133,9 +133,9 @@ export const MealPlannerService = {
         Authorization: `Bearer ${token}`, // Send User Token for RLS
         apikey: supabaseAnonKey,
       },
-      body: JSON.stringify({ 
-          startDate,
-          customPreferences: preferences 
+      body: JSON.stringify({
+        startDate,
+        customPreferences: preferences,
       }),
     });
 

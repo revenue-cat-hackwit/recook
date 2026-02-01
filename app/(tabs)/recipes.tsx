@@ -31,6 +31,7 @@ import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
 import { CollectionCard } from '@/components/recipes/CollectionCard';
 import { CollectionSelectorModal } from '@/components/recipes/CollectionSelectorModal';
 import { CreateCollectionModal } from '@/components/recipes/CreateCollectionModal';
+import { CustomAlertModal } from '@/components/CustomAlertModal';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -83,6 +84,14 @@ export default function SavedRecipesScreen() {
   // Collection Selector (Single Recipe)
   const [collectionSelectorVisible, setCollectionSelectorVisible] = useState(false);
   const [recipeForCollection, setRecipeForCollection] = useState<Recipe | null>(null);
+
+  // Custom Alert Modal State
+  const [deleteCollectionAlertVisible, setDeleteCollectionAlertVisible] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<string | null>(null);
+
+  const [deleteRecipeAlertVisible, setDeleteRecipeAlertVisible] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<string | null>(null);
+  const [recipeTitleToDelete, setRecipeTitleToDelete] = useState<string>('');
 
   const handleToggleCollection = async (collectionName: string) => {
     if (!recipeForCollection) return;
@@ -263,6 +272,42 @@ export default function SavedRecipesScreen() {
       console.error(e);
       Alert.alert('Error', 'Failed to create collection.');
     }
+  };
+
+  const handleDeleteCollection = (collectionName: string) => {
+    if (collectionName === 'All Recipes') return;
+    setCollectionToDelete(collectionName);
+    setDeleteCollectionAlertVisible(true);
+  };
+
+  const confirmDeleteCollection = async () => {
+    if (!collectionToDelete) return;
+
+    try {
+      const recipesToUpdate = savedRecipes.filter((r) =>
+        r.collections?.includes(collectionToDelete),
+      );
+
+      const updatePromises = recipesToUpdate.map(async (recipe) => {
+        const newCollections = recipe.collections?.filter((c) => c !== collectionToDelete) || [];
+        await updateRecipe({
+          ...recipe,
+          collections: newCollections,
+        });
+      });
+
+      await Promise.all(updatePromises);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to delete collection.');
+    }
+  };
+
+  const confirmDeleteRecipe = async () => {
+    if (!recipeToDelete) return;
+    await deleteRecipe(recipeToDelete);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleStartManualCreate = () => {
@@ -582,6 +627,10 @@ export default function SavedRecipesScreen() {
                   setActiveCollection(collection.name);
                   setViewMode('list');
                 }}
+                onLongPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  handleDeleteCollection(collection.name);
+                }}
               />
             ))}
             <TouchableOpacity
@@ -606,17 +655,9 @@ export default function SavedRecipesScreen() {
                 setCollectionSelectorVisible(true);
               }}
               onDelete={(id) => {
-                Alert.alert('Delete Recipe', `Are you sure you want to delete "${item.title}"?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await deleteRecipe(id);
-                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    },
-                  },
-                ]);
+                setRecipeToDelete(id);
+                setRecipeTitleToDelete(item.title);
+                setDeleteRecipeAlertVisible(true);
               }}
               onShare={handleShareRecipe}
             />
@@ -648,6 +689,29 @@ export default function SavedRecipesScreen() {
         onClose={() => setCreateCollectionModalVisible(false)}
         recipes={savedRecipes}
         onCreate={handleCreateCollection}
+      />
+
+      {/* Custom Confirmation Modals */}
+      <CustomAlertModal
+        visible={deleteCollectionAlertVisible}
+        title="Delete Collection"
+        message={`Are you sure you want to delete "${collectionToDelete}"? This will remove the collection tag but keep your recipes.`}
+        onClose={() => setDeleteCollectionAlertVisible(false)}
+        onConfirm={confirmDeleteCollection}
+        confirmText="Delete"
+        type="destructive"
+        icon="trash-outline"
+      />
+
+      <CustomAlertModal
+        visible={deleteRecipeAlertVisible}
+        title="Delete Recipe"
+        message={`Are you sure you want to delete "${recipeTitleToDelete}"? This action cannot be undone.`}
+        onClose={() => setDeleteRecipeAlertVisible(false)}
+        onConfirm={confirmDeleteRecipe}
+        confirmText="Delete"
+        type="destructive"
+        icon="trash-outline"
       />
     </SafeAreaView>
   );

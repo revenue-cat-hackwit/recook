@@ -266,8 +266,11 @@ export const RecipeService = {
   /**
    * Calculate Nutrition using AI
    */
-  async calculateNutrition(ingredients: string[], servings: string): Promise<{ time_minutes: string, calories_per_serving: string }> {
-      const prompt = `
+  async calculateNutrition(
+    ingredients: string[],
+    servings: string,
+  ): Promise<{ time_minutes: string; calories_per_serving: string }> {
+    const prompt = `
       I have a recipe with these ingredients:
       ${ingredients.join('\n- ')}
       
@@ -285,44 +288,44 @@ export const RecipeService = {
       Do not include markdown formatting or extra text.
       `;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${supabaseAnonKey}`,
-          },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 100,
-            temperature: 0.2
-          }),
-      });
+    const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 100,
+        temperature: 0.2,
+      }),
+    });
 
-      if (!response.ok) {
-          throw new Error('Failed to calculate nutrition');
-      }
+    if (!response.ok) {
+      throw new Error('Failed to calculate nutrition');
+    }
 
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
+    const data = await response.json();
+    if (!data.success) throw new Error(data.error);
 
-      // Parse JSON from content
-      let content = data.data.message.trim();
-      // Clean markdown if present
-      if (content.startsWith('```json')) {
-          content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (content.startsWith('```')) {
-          content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
-     }
+    // Parse JSON from content
+    let content = data.data.message.trim();
+    // Clean markdown if present
+    if (content.startsWith('```json')) {
+      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (content.startsWith('```')) {
+      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
 
-      try {
-          const result = JSON.parse(content);
-          return {
-              time_minutes: String(result.time_minutes || '15'),
-              calories_per_serving: String(result.calories_per_serving || '0')
-          };
-      } catch (e) {
-          console.error("Failed to parse AI nutrition response", content);
-          throw new Error("Could not parse nutrition data");
-      }
-  }
+    try {
+      const result = JSON.parse(content);
+      return {
+        time_minutes: String(result.time_minutes || '15'),
+        calories_per_serving: String(result.calories_per_serving || '0'),
+      };
+    } catch (e) {
+      console.error('Failed to parse AI nutrition response', content);
+      throw new Error('Could not parse nutrition data');
+    }
+  },
 };

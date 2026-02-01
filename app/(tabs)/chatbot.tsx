@@ -1,8 +1,19 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
-import { View, FlatList, Alert, Animated, Easing, Text, Platform, Keyboard } from 'react-native';
+import {
+  View,
+  FlatList,
+  Alert,
+  Animated,
+  Easing,
+  Text,
+  Platform,
+  Keyboard,
+  TouchableOpacity,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Message } from '@/lib/types';
+import { Message, Recipe } from '@/lib/types';
 import { AIService } from '@/lib/services/aiService';
+import { RecipeService } from '@/lib/services/recipeService';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { EmptyChat } from '@/components/chat/EmptyChat';
@@ -10,13 +21,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
 import RevenueCatUI from 'react-native-purchases-ui';
 import * as Haptics from 'expo-haptics';
+import { ChatHistoryDrawer } from '@/components/chat/ChatHistoryDrawer';
 
 const dummyMessages: Message[] = [
   {
     id: '1',
     role: 'assistant',
     content:
-      'Halo! Saya Chef Bot Pirinku 👨‍🍳. Ada bahan apa di kulkasmu hari ini? Atau mau ide masak apa?',
+      "Hi, I'm Cooki! 🍳 I'm here to help you turn those viral links into real meals. What are we cooking today?",
     timestamp: Date.now() - 300000,
   },
   {
@@ -74,7 +86,7 @@ const ThinkingIndicator = () => {
         </Animated.View>
       </View>
       <Text className="text-right font-visby text-xs text-gray-400">
-        Pirinku bisa melakukan kesalahan. Periksa ulang respons.
+        Cooki can make mistakes. Please double check responses.
       </Text>
     </View>
   );
@@ -83,21 +95,67 @@ const ThinkingIndicator = () => {
 export default function Chatbot() {
   const flatListRef = useRef<FlatList>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  // Initialize with a new session ID if none exists, or load last session
+  const [currentSessionId, setCurrentSessionId] = useState<string>(
+    Date.now().toString(36) + Math.random().toString(36).substr(2),
+  );
 
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [historyDrawerVisible, setHistoryDrawerVisible] = useState(false);
 
   // Subscription Hooks
   const { checkCanGenerate, incrementUsage, initialize } = useSubscriptionStore();
 
   useEffect(() => {
-    loadHistory();
+    // Initial load: Try to get sessions first, if any, load the latest one.
+    // If not, we stay with the default new random session ID.
+    loadSessions().then((sessions) => {
+      if (sessions.length > 0) {
+        // Load the most recent session
+        const lastSession = sessions[0];
+        setCurrentSessionId(lastSession.id);
+        loadHistory(lastSession.id);
+      } else {
+        // New user or no history, keeps the random ID initialized in state
+      }
+    });
+    loadSavedRecipes();
   }, []);
 
-  const loadHistory = async () => {
-    const history = await AIService.getHistory();
-    if (history.length > 0) {
-      setMessages(history); // Replace with cloud history
+  // Reload sessions when drawer is opened
+  useEffect(() => {
+    if (historyDrawerVisible) {
+      loadSessions();
+    }
+  }, [historyDrawerVisible]);
+
+  const loadSessions = async () => {
+    const sessions = await AIService.getSessions();
+    setChatSessions(sessions);
+    return sessions;
+  };
+
+  const loadHistory = async (sessionId: string) => {
+    setLoading(true);
+    try {
+      const history = await AIService.getHistory(sessionId);
+      setMessages(history);
+    } catch (e) {
+      console.error('Failed to load history', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSavedRecipes = async () => {
+    try {
+      const recipes = await RecipeService.getUserRecipes();
+      setSavedRecipes(recipes);
+    } catch (e) {
+      console.error('Failed to load recipes:', e);
     }
   };
 
@@ -140,15 +198,38 @@ export default function Chatbot() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Save User Msg
-    AIService.saveMessage('user', userMessage.content!);
+    // Save User Msg with Session ID
+    AIService.saveMessage('user', userMessage.content!, currentSessionId);
 
     try {
-      const allMessages = messages.concat(userMessage); // optimize this if history is huge (limit context)
+      const allMessages = messages.concat(userMessage);
 
       console.log('[Chatbot] Sending via Service:', { count: allMessages.length });
 
-      const aiResponseContent = await AIService.sendMessage(allMessages);
+      // Add context about saved recipes if user asks for recommendations
+      const isAskingForRecommendation =
+        inputText.toLowerCase().includes('rekomen') ||
+        inputText.toLowerCase().includes('suggest') ||
+        inputText.toLowerCase().includes('ide') ||
+        inputText.toLowerCase().includes('masak apa');
+
+      let contextMessage = '';
+      if (isAskingForRecommendation && savedRecipes.length > 0) {
+        const recipeList = savedRecipes
+          .slice(0, 10)
+          .map((r) => r.title)
+          .join(', ');
+        contextMessage = `\n\n[Context: User has ${savedRecipes.length} saved recipes including: ${recipeList}. You can recommend similar recipes or variations based on these.]`;
+      }
+
+      const aiResponseContent = await AIService.sendMessage(
+        contextMessage
+          ? [
+              ...allMessages.slice(0, -1),
+              { ...userMessage, content: userMessage.content + contextMessage },
+            ]
+          : allMessages,
+      );
 
       // 2. Increment Usage on Success
       incrementUsage();
@@ -163,12 +244,15 @@ export default function Chatbot() {
 
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Save AI Msg
-      AIService.saveMessage('assistant', aiResponseContent);
+      // Save AI Msg with Session ID
+      AIService.saveMessage('assistant', aiResponseContent, currentSessionId);
+
+      // Update session list in background to reflect new message immediately in drawer next time
+      loadSessions();
     } catch (error: any) {
       console.error('[Chatbot] Error calling AI:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Maaf, Chef Bot sedang sibuk. Coba lagi nanti ya!');
+      Alert.alert('Error', 'Sorry, Cooki is busy right now. Please try again later!');
     } finally {
       setLoading(false);
     }
@@ -191,10 +275,7 @@ export default function Chatbot() {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
-        'Izin Ditolak',
-        'Chef Bot butuh izin akses galeri untuk melihat bahan masakanmu.',
-      );
+      Alert.alert('Permission Denied', 'Cooki needs gallery access to see your ingredients.');
       return;
     }
 
@@ -211,7 +292,7 @@ export default function Chatbot() {
       // For images, use base64
       if (!asset.base64) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Error', 'Gagal memproses gambar. Coba lagi.');
+        Alert.alert('Error', 'Failed to process image. Please try again.');
         return;
       }
       const base64 = `data:image/jpeg;base64,${asset.base64}`;
@@ -221,7 +302,7 @@ export default function Chatbot() {
         content: [
           {
             type: 'text',
-            text: inputText.trim() || 'Tolong buatkan resep dari bahan di gambar ini',
+            text: inputText.trim() || 'Please create a recipe from the ingredients in this image',
           },
           { type: 'image_url', image_url: { url: base64 } },
         ],
@@ -233,8 +314,8 @@ export default function Chatbot() {
       setLoading(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Save User Msg (Image + Text)
-      AIService.saveMessage('user', userMessage.content!);
+      // Save User Msg (Image + Text) with Session ID
+      AIService.saveMessage('user', userMessage.content!, currentSessionId);
 
       try {
         const allMessages = messages.concat(userMessage);
@@ -254,18 +335,110 @@ export default function Chatbot() {
 
         setMessages((prev) => [...prev, aiMessage]);
 
-        // Save AI
-        AIService.saveMessage('assistant', aiResponseContent);
+        // Save AI with Session ID
+        AIService.saveMessage('assistant', aiResponseContent, currentSessionId);
+        loadSessions();
       } catch (error: any) {
         console.error('Error analyzing image:', error);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Error', 'Gagal menganalisis gambar. Pastikan koneksi internet lancar.');
+        Alert.alert(
+          'Error',
+          'Failed to analyze image. Please ensure you have a stable internet connection.',
+        );
       } finally {
         setLoading(false);
       }
     }
   };
 
+  // Parse and save recipe from AI response
+  const handleSaveLastRecipe = async () => {
+    try {
+      // Get the last assistant message
+      const lastAIMessage = [...messages].reverse().find((m) => m.role === 'assistant');
+
+      if (!lastAIMessage || typeof lastAIMessage.content !== 'string') {
+        Alert.alert('No Recipe Found', 'No recipe found to save from the last chat.');
+        return;
+      }
+
+      const content = lastAIMessage.content;
+
+      // Simple parsing - look for recipe title (usually in bold or after emoji)
+      const titleMatch = content.match(/(?:\*\*|🍳|🍚|🍗|🥘|🍜)\s*(.+?)(?:\*\*|\n)/);
+      const title = titleMatch ? titleMatch[1].trim() : 'Recipe from Chat';
+
+      // Extract ingredients (lines starting with -, •, or numbers)
+      const ingredientsMatch = content.match(/(?:Bahan|Ingredients?):?\s*\n((?:[-•\d].*\n?)+)/i);
+      const ingredients = ingredientsMatch
+        ? ingredientsMatch[1]
+            .split('\n')
+            .filter((l) => l.trim())
+            .map((l) => l.replace(/^[-•\d.)\s]+/, '').trim())
+        : [];
+
+      // Extract steps
+      const stepsMatch = content.match(
+        /(?:Cara|Steps?|Instructions?|Langkah):?\s*\n((?:[\d].*\n?)+)/i,
+      );
+      const stepsText = stepsMatch ? stepsMatch[1] : '';
+      const steps = stepsText
+        .split('\n')
+        .filter((l) => l.trim())
+        .map((instruction, idx) => ({
+          step: (idx + 1).toString(),
+          instruction: instruction.replace(/^\d+[.)]\s*/, '').trim(),
+        }));
+
+      if (ingredients.length === 0 && steps.length === 0) {
+        Alert.alert(
+          'Parse Failed',
+          'Could not detect a recipe. Ensure Cooki provided a clear format (Ingredients & Instructions).',
+        );
+        return;
+      }
+
+      const recipe: Recipe = {
+        title,
+        description: `Saved from chat on ${new Date().toLocaleDateString()}`,
+        ingredients,
+        steps,
+        time_minutes: '30',
+        calories_per_serving: '0',
+        servings: '2',
+        difficulty: 'Medium',
+        createdAt: new Date().toISOString(),
+        collections: ['From Chat'],
+      };
+
+      await RecipeService.saveRecipe(recipe);
+      await loadSavedRecipes(); // Refresh
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Saved! 📖', `Recipe "${title}" has been saved to your collection.`);
+    } catch (error) {
+      console.error('Failed to save recipe:', error);
+      Alert.alert('Error', 'Failed to save recipe. Please try again.');
+    }
+  };
+
+  // Get recipe recommendations
+  const handleGetRecommendations = () => {
+    if (savedRecipes.length === 0) {
+      Alert.alert(
+        'No Saved Recipes',
+        "You don't have any saved recipes yet. Save some from chat or the Generate tab!",
+      );
+      return;
+    }
+
+    const recommendationPrompt = `Give me 3 recipe recommendations similar to or variations of my saved recipes. Keep it simple and delicious!`;
+    setInputText(recommendationPrompt);
+    // Auto-send
+    setTimeout(() => sendMessage(), 100);
+  };
+
+  // Keyboard animation for floating input
   const keyboardHeight = useRef(new Animated.Value(0)).current;
 
   useLayoutEffect(() => {
@@ -274,11 +447,16 @@ export default function Chatbot() {
 
     const showSubscription = Keyboard.addListener(showEvent, (e) => {
       Animated.spring(keyboardHeight, {
-        toValue: e.endCoordinates.height * 0.8,
+        toValue: e.endCoordinates.height,
         useNativeDriver: false,
         friction: 12,
         tension: 140,
       }).start();
+
+      // Scroll to bottom when keyboard shows to reveal latest messages
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     });
 
     const hideSubscription = Keyboard.addListener(hideEvent, () => {
@@ -296,39 +474,165 @@ export default function Chatbot() {
     };
   }, []);
 
+  // Mock chat sessions removed - fetch from DB
+
   return (
-    <View className="flex-1">
-      <Animated.FlatList
-        ref={flatListRef}
-        data={messages.length > 0 ? messages.slice().reverse() : dummyMessages.slice().reverse()}
-        renderItem={({ item }: { item: Message }) => <ChatMessage message={item} />}
-        keyExtractor={(_, index) => index.toString()}
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: keyboardHeight,
-          backgroundColor: '#ffffff',
-          flexGrow: 1,
+    <>
+      <ChatHistoryDrawer
+        visible={historyDrawerVisible}
+        onClose={() => setHistoryDrawerVisible(false)}
+        sessions={chatSessions} // Use real sessions
+        onSelectSession={(id) => {
+          console.log('Selected session:', id);
+          setCurrentSessionId(id);
+          loadHistory(id);
+          setHistoryDrawerVisible(false);
         }}
-        ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
-        ListEmptyComponent={<EmptyChat />}
-        keyboardShouldPersistTaps="handled"
+        onDeleteSession={(sessionId) => {
+          Alert.alert('Delete Chat', 'Remove this conversation?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await AIService.deleteSession(sessionId);
+                  await loadSessions();
+
+                  // If current session is deleted, start new one
+                  if (sessionId === currentSessionId) {
+                    setMessages([]);
+                    setCurrentSessionId(
+                      Date.now().toString(36) + Math.random().toString(36).substr(2),
+                    );
+                  }
+
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to delete chat');
+                }
+              },
+            },
+          ]);
+        }}
+        onNewChat={() => {
+          setMessages([]);
+          setInputText('');
+          // Generate new Session ID
+          setCurrentSessionId(Date.now().toString(36) + Math.random().toString(36).substr(2));
+          setHistoryDrawerVisible(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('New Chat Started', 'Ready for a fresh conversation! 🍳');
+        }}
+        onClearAll={() => {
+          Alert.alert(
+            'Clear History',
+            'Are you sure you want to delete all chat history? This cannot be undone.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await AIService.clearHistory();
+                    setMessages([]);
+                    setChatSessions([]);
+                    setHistoryDrawerVisible(false);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  } catch (e) {
+                    Alert.alert('Error', 'Failed to clear history');
+                  }
+                },
+              },
+            ],
+          );
+        }}
       />
-      <Animated.View
-        style={{
-          position: 'absolute',
-          bottom: keyboardHeight,
-          left: 0,
-          right: 0,
-        }}
-      >
-        <ChatInput
-          value={inputText}
-          onChangeText={setInputText}
-          onSend={sendMessage}
-          onPickImage={pickImage}
-          loading={loading}
-        />
-      </Animated.View>
-    </View>
+
+      <View className="flex-1">
+        <View className="flex-1">
+          {/* Header with Hamburger Menu */}
+          <View className="flex-row items-center justify-between bg-white px-4 pb-3 pt-12 shadow-sm">
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setHistoryDrawerVisible(true);
+              }}
+              className="rounded-full bg-gray-100 p-2"
+            >
+              <Ionicons name="menu" size={24} color="#333" />
+            </TouchableOpacity>
+
+            <Text className="font-visby-bold text-xl text-gray-900">Chat</Text>
+
+            <TouchableOpacity
+              onPress={async () => {
+                const paywallResult = await RevenueCatUI.presentPaywall();
+                if (
+                  paywallResult === RevenueCatUI.PAYWALL_RESULT.PURCHASED ||
+                  paywallResult === RevenueCatUI.PAYWALL_RESULT.RESTORED
+                ) {
+                  await initialize();
+                }
+              }}
+              className="rounded-full bg-purple-50 px-3 py-1.5"
+            >
+              <Text className="font-visby-bold text-xs text-purple-600">Upgrade</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Animated.FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={({ item }: { item: Message }) => (
+              <ChatMessage
+                message={item}
+                onSaveRecipe={handleSaveLastRecipe}
+                onGetIdeas={handleGetRecommendations}
+              />
+            )}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{
+              padding: 16,
+              paddingBottom: 400, // Extra padding to ensure bubbles visible above keyboard
+              backgroundColor: '#ffffff',
+              flexGrow: 1,
+            }}
+            onScroll={Animated.event([], { useNativeDriver: false })}
+            scrollEventThrottle={16}
+            ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
+            ListEmptyComponent={<EmptyChat />}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => {
+              // Auto scroll to bottom when new message
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }}
+            // Dynamically adjust content inset when keyboard appears
+            contentInset={{ bottom: keyboardHeight }}
+            contentInsetAdjustmentBehavior="automatic"
+          />
+
+          {/* Floating Input Box with Transparent Background */}
+          <Animated.View
+            style={{
+              position: 'absolute',
+              bottom: keyboardHeight,
+              left: 0,
+              right: 0,
+              backgroundColor: 'transparent',
+            }}
+          >
+            <ChatInput
+              value={inputText}
+              onChangeText={setInputText}
+              onSend={sendMessage}
+              onPickImage={pickImage}
+              loading={loading}
+            />
+          </Animated.View>
+        </View>
+      </View>
+    </>
   );
 }

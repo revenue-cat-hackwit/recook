@@ -165,7 +165,8 @@ export default function GenerateScreen() {
               {!isBrief && (
                 <TouchableOpacity
                   onPress={() => {
-                    addToShoppingList(recipe.ingredients, recipe.title);
+                    const ingredientsToAdd = recipe.ingredients.map((ing) => ({ name: ing }));
+                    addToShoppingList(ingredientsToAdd, recipe.title);
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     toastRef.current?.show('Added to Shopping List', 'success');
                   }}

@@ -46,7 +46,7 @@ export const ChatInput = ({
           onChangeText(res.transcript);
         }
       } catch (e) {
-        Alert.alert('Error', 'Gagal memproses suara.');
+        Alert.alert('Error', 'Failed to process audio.');
       } finally {
         setIsTranscribing(false);
       }
@@ -67,7 +67,7 @@ export const ChatInput = ({
           }, 500);
         }
       } catch (e) {
-        Alert.alert('Error', 'Gagal memproses suara.');
+        Alert.alert('Error', 'Failed to process audio.');
       } finally {
         setIsTranscribing(false);
       }
@@ -163,7 +163,7 @@ export const ChatInput = ({
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        placeholder="Ask Pirinku..."
+        placeholder="Ask Cooki..."
         placeholderTextColor="#9ca3af"
         className="mb-1 max-h-[100px] font-visby text-base text-white"
         multiline

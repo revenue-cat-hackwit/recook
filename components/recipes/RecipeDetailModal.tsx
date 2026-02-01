@@ -224,7 +224,8 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
   const handleAddIngredientsToShoppingList = () => {
     if (recipe) {
-      addToShoppingList(recipe.ingredients || [], recipe.title);
+      const ingredientsData = (recipe.ingredients || []).map((name) => ({ name }));
+      addToShoppingList(ingredientsData, recipe.title);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Success', 'Ingredients added to Shopping List!');
     }
@@ -471,6 +472,86 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                   placeholder="Describe the taste, texture, or story behind this recipe..."
                   placeholderTextColor="#9CA3AF"
                 />
+
+                {/* Quick Actions for New Recipe */}
+                {!tempRecipe?.id && (
+                  <View className="mt-4 gap-3">
+                    <Text className="font-visby-bold text-xs uppercase tracking-wider text-gray-500">
+                      Quick Actions
+                    </Text>
+
+                    <View className="flex-row gap-3">
+                      {/* Pick from Gallery */}
+                      <TouchableOpacity
+                        onPress={pickImage}
+                        className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 py-4"
+                      >
+                        <Ionicons name="images" size={20} color="#3B82F6" />
+                        <Text className="font-visby-bold text-sm text-blue-700">Add Photo</Text>
+                      </TouchableOpacity>
+
+                      {/* Generate with AI */}
+                      <TouchableOpacity
+                        onPress={async () => {
+                          // Validate title and description
+                          if (!tempRecipe?.title?.trim()) {
+                            Alert.alert(
+                              'Title Required',
+                              'Please enter a recipe title first before using AI generation.',
+                            );
+                            return;
+                          }
+
+                          if (!tempRecipe?.description?.trim()) {
+                            Alert.alert(
+                              'Description Required',
+                              'Please add a brief description of your recipe before using AI generation.',
+                            );
+                            return;
+                          }
+
+                          // Call AI generation
+                          if (onGenerateFull && tempRecipe) {
+                            setIsGenerating(true);
+                            try {
+                              await onGenerateFull(tempRecipe);
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                              Alert.alert(
+                                'Generated! ✨',
+                                'AI has generated ingredients and steps for your recipe. Review and edit as needed.',
+                              );
+                            } catch (e: any) {
+                              console.error(e);
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                              Alert.alert(
+                                'Error',
+                                e.message || 'Failed to generate recipe with AI.',
+                              );
+                            } finally {
+                              setIsGenerating(false);
+                            }
+                          }
+                        }}
+                        disabled={isGenerating}
+                        className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-green-100 bg-green-50 py-4"
+                        style={{ opacity: isGenerating ? 0.5 : 1 }}
+                      >
+                        {isGenerating ? (
+                          <ActivityIndicator size="small" color="#8BD65E" />
+                        ) : (
+                          <Ionicons name="sparkles" size={20} color="#8BD65E" />
+                        )}
+                        <Text className="font-visby-bold text-sm text-green-700">
+                          {isGenerating ? 'Generating...' : 'AI Generate'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text className="text-center font-visby text-xs text-gray-400">
+                      Add a photo manually or let AI generate ingredients & steps
+                    </Text>
+                  </View>
+                )}
               </View>
             ) : (
               <Text className="mb-6 font-visby text-base text-gray-500 dark:text-gray-400">
@@ -607,9 +688,9 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
               </View>
             </View>
 
-            {/* Collections */}
+            {/* Collections - Only show when editing existing recipes or viewing */}
             <View className="mb-6">
-              {isEditing ? (
+              {isEditing && tempRecipe?.id ? (
                 <View>
                   <Text className="mb-2 font-visby-bold text-lg text-gray-900 dark:text-white">
                     Collections

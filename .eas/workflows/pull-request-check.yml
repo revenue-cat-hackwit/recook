@@ -3,7 +3,7 @@ name: Pull Request Checks
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: ["main", "develop"]
+    branches: ['main', 'develop']
 
 jobs:
   lint_and_typecheck:

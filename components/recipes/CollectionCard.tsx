@@ -7,9 +7,16 @@ interface CollectionCardProps {
   count: number;
   images: string[];
   onPress: () => void;
+  onLongPress?: () => void;
 }
 
-export const CollectionCard: React.FC<CollectionCardProps> = ({ name, count, images, onPress }) => {
+export const CollectionCard: React.FC<CollectionCardProps> = ({
+  name,
+  count,
+  images,
+  onPress,
+  onLongPress,
+}) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -60,7 +67,12 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({ name, count, ima
   };
 
   return (
-    <TouchableOpacity onPress={onPress} className="mb-6 mr-4 w-[45%]" activeOpacity={0.8}>
+    <TouchableOpacity
+      onPress={onPress}
+      onLongPress={onLongPress}
+      className="mb-6 mr-4 w-[45%]"
+      activeOpacity={0.8}
+    >
       {/* Image Container with rounded corners and shadow */}
       <View className="aspect-square w-full overflow-hidden rounded-3xl border border-gray-100 bg-gray-100 shadow-sm dark:border-gray-800 dark:bg-gray-800">
         {renderImages()}

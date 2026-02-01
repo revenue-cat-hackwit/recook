@@ -6,11 +6,32 @@ import { Ionicons } from '@expo/vector-icons';
 import { useShoppingListStore } from '@/lib/store/shoppingListStore';
 import { ShoppingItem } from '@/lib/types';
 import * as Haptics from 'expo-haptics';
+import { CustomAlertModal } from '@/components/CustomAlertModal';
+import { EditShoppingItemModal } from '@/components/shopping/EditShoppingItemModal';
 
 export default function ShoppingListScreen() {
   const router = useRouter();
-  const { items, toggleItem, removeItem, clearAll, sync, addItem } = useShoppingListStore();
-  const [newItemText, setNewItemText] = useState('');
+  const { items, toggleItem, removeItem, clearAll, sync, addItem, updateItem } =
+    useShoppingListStore();
+
+  // Split input state
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQty, setNewItemQty] = useState('');
+  const [newItemUnit, setNewItemUnit] = useState('');
+
+  const [clearAlertVisible, setClearAlertVisible] = useState(false);
+
+  // Edit State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<ShoppingItem | null>(null);
+
+  // Sorting
+  const sortedItems = React.useMemo(() => {
+    // Sort by: Unchecked first, then Checked. Within groups, sort by creation (implicitly order in array but typically reverse chrono)
+    const unchecked = items.filter((i) => !i.isChecked);
+    const checked = items.filter((i) => i.isChecked);
+    return [...unchecked, ...checked];
+  }, [items]);
 
   useEffect(() => {
     // Sync on load
@@ -22,60 +43,112 @@ export default function ShoppingListScreen() {
     toggleItem(id);
   };
 
+  const parseItemText = (text: string) => {
+    // Basic parser: "2 kg rice" -> qty: 2, unit: kg, name: rice
+    // "3 apples" -> qty: 3, unit: pcs (implicit), name: apples
+    const parts = text.trim().split(' ');
+    const qty = parseFloat(parts[0]);
+
+    if (!isNaN(qty)) {
+      if (parts.length > 2) {
+        // Assume second part is unit if there are more parts
+        const unit = parts[1];
+        const name = parts.slice(2).join(' ');
+        return { name, quantity: qty, unit };
+      } else if (parts.length === 2) {
+        // "3 apples" -> 3 pcs apples
+        return { name: parts[1], quantity: qty, unit: 'pcs' };
+      }
+    }
+    return { name: text.trim() };
+  };
+
   const handleAddManual = async () => {
-    if (!newItemText.trim()) return;
+    if (!newItemName.trim()) return;
     Haptics.selectionAsync();
-    await addItem(newItemText.trim());
-    setNewItemText('');
+
+    await addItem(
+      newItemName.trim(),
+      undefined,
+      newItemQty ? parseFloat(newItemQty) : undefined,
+      newItemUnit.trim() || undefined,
+    );
+
+    setNewItemName('');
+    setNewItemQty('');
+    setNewItemUnit('');
   };
 
   const handleClear = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('Clear List', 'Are you sure you want to remove all items?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear All',
-        style: 'destructive',
-        onPress: () => {
-          clearAll();
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        },
-      },
-    ]);
+    setClearAlertVisible(true);
+  };
+
+  const confirmClear = () => {
+    clearAll();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleEdit = (item: ShoppingItem) => {
+    Haptics.selectionAsync();
+    setItemToEdit(item);
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateItem = async (id: string, updates: Partial<ShoppingItem>) => {
+    await updateItem(id, updates);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const renderItem = ({ item }: { item: ShoppingItem }) => (
-    <TouchableOpacity
-      className={`mb-3 flex-row items-center rounded-xl border p-4 shadow-sm ${
-        item.isChecked ? 'border-gray-100 bg-gray-50' : 'border-gray-100 bg-white'
+    <View
+      className={`mb-2 flex-row items-center border-b border-gray-100 py-3 ${
+        item.isChecked ? 'opacity-50' : ''
       }`}
-      onPress={() => handleToggle(item.id)}
     >
-      <View
-        className={`mr-3 h-6 w-6 items-center justify-center rounded-full border ${
-          item.isChecked ? 'border-primary bg-primary' : 'border-gray-300'
-        }`}
-      >
-        {item.isChecked && <Ionicons name="checkmark" size={16} color="white" />}
-      </View>
-
-      <View className="flex-1">
-        <Text
-          className={`font-visby text-base ${
-            item.isChecked ? 'text-gray-400 line-through' : 'text-gray-900'
+      <TouchableOpacity onPress={() => handleToggle(item.id)} className="mr-3">
+        <View
+          className={`h-5 w-5 items-center justify-center rounded border ${
+            item.isChecked ? 'border-primary bg-primary' : 'border-gray-300'
           }`}
         >
-          {item.name}
-        </Text>
-        {item.fromRecipe && (
-          <Text className="mt-1 text-xs text-gray-400">From: {item.fromRecipe}</Text>
-        )}
-      </View>
-
-      <TouchableOpacity onPress={() => removeItem(item.id)} className="p-2">
-        <Ionicons name="trash-outline" size={18} color="#ddd" />
+          {item.isChecked && <Ionicons name="checkmark" size={14} color="white" />}
+        </View>
       </TouchableOpacity>
-    </TouchableOpacity>
+
+      <TouchableOpacity className="flex-1 flex-row items-center" onPress={() => handleEdit(item)}>
+        {/* Item Name Column */}
+        <View className="flex-[3] pr-2">
+          <Text
+            className={`font-visby text-base ${
+              item.isChecked ? 'text-gray-400 line-through' : 'text-gray-900'
+            }`}
+            numberOfLines={2}
+          >
+            {item.name}
+          </Text>
+          {item.fromRecipe && (
+            <Text className="text-[10px] text-gray-400" numberOfLines={1}>
+              {item.fromRecipe}
+            </Text>
+          )}
+        </View>
+
+        {/* Quantity Column */}
+        <View className="flex-1 items-center justify-center border-l border-gray-100 px-1">
+          <Text className="font-visby-bold text-sm text-gray-700">{item.quantity || '-'}</Text>
+        </View>
+
+        {/* Unit Column */}
+        <View className="flex-1 items-center justify-center border-l border-gray-100 px-1">
+          <Text className="font-visby text-sm text-gray-500">{item.unit || '-'}</Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => removeItem(item.id)} className="ml-2 p-2">
+        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -95,25 +168,59 @@ export default function ShoppingListScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Add Item Input */}
-      <View className="flex-row items-center gap-3 border-b border-gray-50 bg-white px-6 py-4">
+      {/* Add Item Input - Split Columns */}
+      <View className="flex-row items-center gap-2 border-b border-gray-100 bg-white px-4 py-4 shadow-sm">
+        {/* Name Input */}
         <TextInput
-          value={newItemText}
-          onChangeText={setNewItemText}
-          placeholder="Add milk, eggs, ..."
+          value={newItemName}
+          onChangeText={setNewItemName}
+          placeholder="Item Name"
           placeholderTextColor="#9CA3AF"
-          className="flex-1 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 font-visby text-gray-900"
+          className="flex-[3] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-visby text-sm text-gray-900"
+          onSubmitEditing={() => {}}
+          returnKeyType="next"
+        />
+
+        {/* Qty Input */}
+        <TextInput
+          value={newItemQty}
+          onChangeText={setNewItemQty}
+          placeholder="Qty"
+          placeholderTextColor="#9CA3AF"
+          keyboardType="numeric"
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center font-visby text-sm text-gray-900"
+        />
+
+        {/* Unit Input */}
+        <TextInput
+          value={newItemUnit}
+          onChangeText={setNewItemUnit}
+          placeholder="Unit"
+          placeholderTextColor="#9CA3AF"
+          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center font-visby text-sm text-gray-900"
           onSubmitEditing={handleAddManual}
           returnKeyType="done"
         />
+
         <TouchableOpacity
           onPress={handleAddManual}
-          disabled={!newItemText.trim()}
-          className={`rounded-xl p-3 ${newItemText.trim() ? 'bg-black' : 'bg-gray-200'}`}
+          disabled={!newItemName.trim()}
+          className={`h-10 w-10 items-center justify-center rounded-full ${newItemName.trim() ? 'bg-black' : 'bg-gray-200'}`}
         >
-          <Ionicons name="add" size={24} color={newItemText.trim() ? 'white' : '#999'} />
+          <Ionicons name="add" size={24} color={newItemName.trim() ? 'white' : '#999'} />
         </TouchableOpacity>
       </View>
+
+      {/* List Header */}
+      {items.length > 0 && (
+        <View className="flex-row items-center border-b border-gray-200 bg-gray-50 px-4 py-2">
+          <View className="w-8" />
+          <Text className="flex-[3] font-visby-bold text-xs text-gray-500">ITEM</Text>
+          <Text className="flex-1 text-center font-visby-bold text-xs text-gray-500">QTY</Text>
+          <Text className="flex-1 text-center font-visby-bold text-xs text-gray-500">UNIT</Text>
+          <View className="w-8" />
+        </View>
+      )}
 
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center px-10">
@@ -133,13 +240,31 @@ export default function ShoppingListScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={sortedItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <CustomAlertModal
+        visible={clearAlertVisible}
+        title="Clear List"
+        message="Are you sure you want to remove all items?"
+        onClose={() => setClearAlertVisible(false)}
+        onConfirm={confirmClear}
+        confirmText="Clear All"
+        type="destructive"
+        icon="trash-outline"
+      />
+
+      <EditShoppingItemModal
+        visible={editModalVisible}
+        item={itemToEdit}
+        onClose={() => setEditModalVisible(false)}
+        onUpdate={handleUpdateItem}
+      />
     </SafeAreaView>
   );
 }

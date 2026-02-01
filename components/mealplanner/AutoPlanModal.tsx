@@ -63,7 +63,7 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
           {/* Header */}
           <View className="flex-row items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
             <Text className="font-visby-bold text-xl text-gray-900 dark:text-white">
-              Plan Your Week ✨
+              Plan Your Week
             </Text>
             <TouchableOpacity
               onPress={onClose}
@@ -74,7 +74,11 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1 px-6 pt-2" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 px-6 pt-2"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+          >
             <Text className="mb-6 mt-4 font-visby text-gray-500 dark:text-gray-400">
               Tell us your goals, and our AI Chef will craft a personalized 7-day meal plan for you.
             </Text>
@@ -171,7 +175,7 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
                 <ActivityIndicator color="white" />
               ) : (
                 <>
-                  <Ionicons name="sparkles" size={20} color="white" />
+                  <Ionicons name="calendar-outline" size={20} color="white" />
                   <Text className="ml-2 font-visby-bold text-lg text-white">Generate Plan</Text>
                 </>
               )}

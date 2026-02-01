@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
 
 import { Alert, Text, TouchableOpacity, View, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeSelector } from '@/components/ThemeSelector';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
+import { CustomAlertModal } from '@/components/CustomAlertModal';
 
 import { usePreferencesStore } from '@/lib/store/preferencesStore';
 import { useRouter } from 'expo-router';
@@ -125,22 +126,19 @@ export default function SettingsScreen() {
   const router = useRouter();
   const syncPreferences = usePreferencesStore((state) => state.sync);
 
-  React.useEffect(() => {
+  const [signOutAlertVisible, setSignOutAlertVisible] = React.useState(false);
+
+  useEffect(() => {
     syncPreferences();
   }, [syncPreferences]);
 
-  const handleSignOut = async () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await useAuthStore.getState().signOut();
-          router.replace('/');
-        },
-      },
-    ]);
+  const handleSignOut = () => {
+    setSignOutAlertVisible(true);
+  };
+
+  const confirmSignOut = async () => {
+    await useAuthStore.getState().signOut();
+    router.replace('/');
   };
 
   return (
@@ -193,6 +191,17 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <CustomAlertModal
+        visible={signOutAlertVisible}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        onClose={() => setSignOutAlertVisible(false)}
+        onConfirm={confirmSignOut}
+        confirmText="Sign Out"
+        type="destructive"
+        icon="log-out-outline"
+      />
     </SafeAreaView>
   );
 }

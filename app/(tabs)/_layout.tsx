@@ -39,8 +39,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <MessageText size={size} color={color} variant="Outline" />
           ),
-          headerShown: true,
-          headerShadowVisible: false,
+          headerShown: false,
         }}
       />
       <Tabs.Screen

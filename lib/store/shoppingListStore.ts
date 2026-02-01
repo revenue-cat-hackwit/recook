@@ -7,9 +7,13 @@ import { supabase } from '@/lib/supabase';
 interface ShoppingListState {
   items: ShoppingItem[];
   isLoading: boolean;
-  addItem: (name: string, fromRecipe?: string) => Promise<void>;
-  addMultiple: (names: string[], fromRecipe?: string) => Promise<void>;
+  addItem: (name: string, fromRecipe?: string, quantity?: number, unit?: string) => Promise<void>;
+  addMultiple: (
+    items: { name: string; quantity?: number; unit?: string }[],
+    fromRecipe?: string,
+  ) => Promise<void>;
   toggleItem: (id: string) => Promise<void>;
+  updateItem: (id: string, updates: Partial<ShoppingItem>) => Promise<void>;
   removeItem: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
   sync: () => Promise<void>; // Fetch from cloud
@@ -36,6 +40,8 @@ export const useShoppingListStore = create<ShoppingListState>()(
             const cloudItems: ShoppingItem[] = data.map((d: any) => ({
               id: d.id,
               name: d.name,
+              quantity: d.quantity,
+              unit: d.unit,
               isChecked: d.is_checked,
               fromRecipe: d.from_recipe_name,
             }));
@@ -48,10 +54,17 @@ export const useShoppingListStore = create<ShoppingListState>()(
         }
       },
 
-      addItem: async (name, fromRecipe) => {
+      addItem: async (name, fromRecipe, quantity, unit) => {
         // Optimistic
         const tempId = Date.now().toString();
-        const newItem: ShoppingItem = { id: tempId, name, isChecked: false, fromRecipe };
+        const newItem: ShoppingItem = {
+          id: tempId,
+          name,
+          quantity,
+          unit,
+          isChecked: false,
+          fromRecipe,
+        };
         set((state) => ({ items: [newItem, ...state.items] }));
 
         // Cloud
@@ -62,6 +75,8 @@ export const useShoppingListStore = create<ShoppingListState>()(
             .insert({
               user_id: userData.user.id,
               name,
+              quantity,
+              unit,
               from_recipe_name: fromRecipe,
               is_checked: false,
             })
@@ -77,11 +92,13 @@ export const useShoppingListStore = create<ShoppingListState>()(
         }
       },
 
-      addMultiple: async (names, fromRecipe) => {
+      addMultiple: async (newItemsData, fromRecipe) => {
         // Optimistic
-        const newItems: ShoppingItem[] = names.map((name) => ({
+        const newItems: ShoppingItem[] = newItemsData.map((item) => ({
           id: Date.now().toString() + Math.random(),
-          name,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
           isChecked: false,
           fromRecipe,
         }));
@@ -90,9 +107,11 @@ export const useShoppingListStore = create<ShoppingListState>()(
         // Cloud
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          const payload = names.map((name) => ({
+          const payload = newItemsData.map((item) => ({
             user_id: userData.user!.id,
-            name,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
             from_recipe_name: fromRecipe,
             is_checked: false,
           }));
@@ -122,6 +141,25 @@ export const useShoppingListStore = create<ShoppingListState>()(
             .from('shopping_list_items')
             .update({ is_checked: !current.isChecked })
             .eq('id', id);
+        }
+      },
+      updateItem: async (id, updates) => {
+        // Optimistic
+        set((state) => ({
+          items: state.items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+        }));
+
+        // Cloud
+        if (id.length > 20) {
+          const payload: any = {};
+          if (updates.name !== undefined) payload.name = updates.name;
+          if (updates.quantity !== undefined) payload.quantity = updates.quantity;
+          if (updates.unit !== undefined) payload.unit = updates.unit;
+          if (updates.isChecked !== undefined) payload.is_checked = updates.isChecked;
+
+          if (Object.keys(payload).length > 0) {
+            await supabase.from('shopping_list_items').update(payload).eq('id', id);
+          }
         }
       },
 

@@ -175,13 +175,13 @@ export const useRecipeGenerator = ({
       // Step 3: Auto-Generate Image (Enhancement)
       setLoadingMessage('Plating your dish... (Generating Image)');
       try {
-          const imagePrompt = `${generatedRecipe.title}, ${generatedRecipe.description?.slice(0, 50)}. Food photography, 8k, highly detailed, delicious, professional lighting.`;
-          const generatedImageUrl = await RecipeService.generateImage(imagePrompt);
-          if (generatedImageUrl) {
-              generatedRecipe.imageUrl = generatedImageUrl;
-          }
+        const imagePrompt = `${generatedRecipe.title}, ${generatedRecipe.description?.slice(0, 50)}. Food photography, 8k, highly detailed, delicious, professional lighting.`;
+        const generatedImageUrl = await RecipeService.generateImage(imagePrompt);
+        if (generatedImageUrl) {
+          generatedRecipe.imageUrl = generatedImageUrl;
+        }
       } catch (imgError) {
-          console.warn("Auto-image generation failed, utilizing default media.", imgError);
+        console.warn('Auto-image generation failed, utilizing default media.', imgError);
       }
 
       // Prefer the Clean/Extracted Video URL (Supabase) for playback
