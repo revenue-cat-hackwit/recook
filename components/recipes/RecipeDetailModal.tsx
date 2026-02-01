@@ -703,9 +703,12 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* Ingredients */}
             <View className="mb-6">
               <View className="mb-3 flex-row items-center justify-between border-b border-gray-100 pb-2 dark:border-gray-800">
-                <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
-                  🛒 Ingredients
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="cart-outline" size={24} color={isDark ? '#FFF' : '#111827'} />
+                  <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
+                    Ingredients
+                  </Text>
+                </View>
                 {!isEditing && (
                   <TouchableOpacity onPress={handleAddIngredientsToShoppingList}>
                     <Text className="font-visby-bold text-xs text-[#CC5544]">+ Add to List</Text>
@@ -808,9 +811,16 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* Steps */}
             <View className="mb-8">
               <View className="mb-3 flex-row items-center justify-between border-b border-gray-100 pb-2 dark:border-gray-800">
-                <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
-                  👨‍🍳 Instructions
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <Ionicons
+                    name="restaurant-outline"
+                    size={24}
+                    color={isDark ? '#FFF' : '#111827'}
+                  />
+                  <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">
+                    Instructions
+                  </Text>
+                </View>
               </View>
 
               {isEditing
@@ -896,9 +906,12 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             {/* Tips */}
             {(isEditing || (displayRecipe.tips && displayRecipe.tips.length > 0)) && (
               <View className="mb-8 rounded-xl border border-amber-100 bg-amber-50 p-4 dark:border-amber-900/30 dark:bg-amber-900/20">
-                <Text className="mb-1 font-visby-bold text-amber-800 dark:text-amber-500">
-                  💡 Chef&apos;s Tips
-                </Text>
+                <View className="mb-1 flex-row items-center gap-2">
+                  <Ionicons name="bulb-outline" size={20} color={isDark ? '#F59E0B' : '#92400E'} />
+                  <Text className="font-visby-bold text-amber-800 dark:text-amber-500">
+                    Chef&apos;s Tips
+                  </Text>
+                </View>
                 {isEditing ? (
                   <TextInput
                     value={tempRecipe?.tips}
