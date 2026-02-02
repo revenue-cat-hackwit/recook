@@ -66,5 +66,14 @@
     "typescript": "~5.9.2"
   },
   "main": "expo-router/entry",
-  "private": true
+  "private": true,
+  "lint-staged": {
+    "**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{json,md}": [
+      "prettier --write"
+    ]
+  }
 }
