@@ -33,6 +33,11 @@ export default function PantryScreen() {
   const [itemCategory, setItemCategory] = useState(CATEGORIES[0]);
   const [daysUntilExpiry, setDaysUntilExpiry] = useState('7'); // Default 7 days
 
+  // Scan Preview Modal
+  const [showScanPreview, setShowScanPreview] = useState(false);
+  const [scannedItems, setScannedItems] = useState<any[]>([]);
+  const [loadingMessage, setLoadingMessage] = useState('');
+
   const loadPantry = useCallback(async () => {
     try {
       const data = await PantryService.getPantryItems();
@@ -106,7 +111,7 @@ export default function PantryScreen() {
     // 1. Pick Image
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5, // Faster upload
+      quality: 0.5,
       allowsEditing: true,
       aspect: [4, 3],
     });
@@ -116,39 +121,66 @@ export default function PantryScreen() {
     setAnalyzing(true);
     try {
       // 2. Upload
-      Alert.alert('Uploading', 'Uploading image...');
+      setLoadingMessage('Uploading image...');
       const publicUrl = await RecipeService.uploadMedia(result.assets[0].uri);
 
       // 3. Analyze
-      Alert.alert('Analyzing', 'AI is detecting food items...');
+      setLoadingMessage('Analyzing with AI...');
       const detectedItems = await PantryService.analyzeFromImage(publicUrl);
 
       if (!detectedItems || detectedItems.length === 0) {
         Alert.alert(
           'No Items Found',
-          "AI couldn't detect any food items in the image. Try taking a clearer photo with better lighting.",
+          "AI couldn't detect any food items. Try a clearer photo with better lighting.",
           [{ text: 'OK' }],
         );
         return;
       }
 
-      // 4. Bulk Insert
+      // 4. Show Preview Modal
+      setScannedItems(detectedItems);
+      setShowScanPreview(true);
+    } catch (_e: any) {
+      console.error('Scan Error:', _e);
+      Alert.alert('Scan Failed', _e.message || 'Please try again.', [
+        { text: 'Add Manually', onPress: () => setIsModalOpen(true) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    } finally {
+      setAnalyzing(false);
+      setLoadingMessage('');
+    }
+  };
+
+  const handleSaveScannedItems = async () => {
+    setShowScanPreview(false);
+    setAnalyzing(true);
+
+    try {
       let addedCount = 0;
-      for (const item of detectedItems) {
+      for (const item of scannedItems) {
         try {
           await PantryService.addItem({
-            ingredient_name: item.ingredient_name || 'Unknown Item',
+            ingredient_name: item.name || 'Unknown Item',
             quantity: item.quantity || '1',
-            category: item.category || 'Other',
-            expiry_date:
-              item.expiry_date || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+            category: 'Other',
+            expiry_date: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
           });
           addedCount++;
         } catch (itemError) {
-          console.error('Failed to add item:', item.ingredient_name, itemError);
-          // Continue with other items
+          console.error('Failed to add item:', item.name, itemError);
         }
       }
+
+      // TODO: Delete uploaded image after saving (implement RecipeService.deleteMedia)
+      // if (uploadedImageUrl) {
+      //   try {
+      //     await RecipeService.deleteMedia(uploadedImageUrl);
+      //     console.log('Uploaded image deleted successfully');
+      //   } catch (deleteError) {
+      //     console.error('Failed to delete uploaded image:', deleteError);
+      //   }
+      // }
 
       if (addedCount > 0) {
         Alert.alert(
@@ -157,31 +189,13 @@ export default function PantryScreen() {
         );
         loadPantry();
       } else {
-        Alert.alert('Error', 'Failed to add items to pantry. Please try again.');
+        Alert.alert('Error', 'Failed to add items. Please try again.');
       }
     } catch (e: any) {
-      console.error('Scan Error:', e);
-
-      let errorMessage = 'An unexpected error occurred. Please try again.';
-
-      // Handle specific error types
-      if (e.message?.includes('not authenticated')) {
-        errorMessage = 'Please log in to use this feature.';
-      } else if (e.message?.includes('Edge Function')) {
-        errorMessage =
-          'AI service is temporarily unavailable. Please try again later or add items manually.';
-      } else if (e.message?.includes('network')) {
-        errorMessage = 'Network error. Please check your internet connection.';
-      } else if (e.message) {
-        errorMessage = e.message;
-      }
-
-      Alert.alert('Scan Failed', errorMessage, [
-        { text: 'Add Manually', onPress: () => setIsModalOpen(true) },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      Alert.alert('Error', e.message || 'Failed to save items.');
     } finally {
       setAnalyzing(false);
+      setScannedItems([]);
     }
   };
 
@@ -256,73 +270,60 @@ export default function PantryScreen() {
         className="flex-1 px-5 pt-4"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* AI Camera Scan Feature Card - Prominent when empty */}
-        {items.length === 0 && !loading && (
-          <TouchableOpacity
-            onPress={handleCameraScan}
-            disabled={analyzing}
-            className="mb-6 overflow-hidden rounded-3xl shadow-lg"
-            style={{
-              shadowColor: '#8BD65E',
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 8,
-            }}
-          >
-            <View
-              className="p-8"
-              style={{
-                backgroundColor: '#8BD65E',
-              }}
-            >
-              <View className="items-center">
-                <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-white/20">
-                  {analyzing ? (
-                    <ActivityIndicator size="large" color="white" />
-                  ) : (
-                    <Ionicons name="camera" size={40} color="white" />
-                  )}
-                </View>
-                <Text className="mb-2 text-center font-visby-bold text-2xl text-white">
-                  {analyzing ? 'Analyzing...' : 'Scan Your Pantry'}
-                </Text>
-                <Text className="mb-4 text-center font-visby text-sm text-white/90">
-                  Use AI to instantly detect and add all your ingredients with one photo
-                </Text>
-                <View className="flex-row items-center rounded-full bg-white/20 px-4 py-2">
-                  <Ionicons name="sparkles" size={16} color="white" style={{ marginRight: 6 }} />
-                  <Text className="font-visby-bold text-xs text-white">Powered by AI Vision</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Expiring Soon Section if any */}
-        {items.some((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3) && (
-          <View className="mb-6">
-            <Text className="mb-2 font-visby-bold text-red-500">⚠️ Expiring Soon</Text>
-            {items.filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3).map(renderItem)}
-          </View>
-        )}
-
-        <Text className="mb-3 font-visby-bold text-gray-800">Inventory ({items.length})</Text>
-
+        {/* Main Content Area */}
         {loading ? (
-          <ActivityIndicator color="#8BD65E" />
-        ) : items.length === 0 ? (
-          <View className="items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-12">
-            <Ionicons name="basket-outline" size={64} color="#D1D5DB" />
-            <Text className="mt-4 font-visby-bold text-base text-gray-700">
-              Your pantry is empty
-            </Text>
-            <Text className="mt-1 font-visby text-sm text-gray-500">
-              Scan or add items to get started
-            </Text>
+          <View className="mt-20 items-center">
+            <ActivityIndicator size="large" color="#8BD65E" />
           </View>
+        ) : items.length > 0 ? (
+          <>
+            {/* Expiring Soon Section if any */}
+            {items.some((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3) && (
+              <View className="mb-6">
+                <Text className="mb-2 font-visby-bold text-red-500">⚠️ Expiring Soon</Text>
+                {items
+                  .filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3)
+                  .map(renderItem)}
+              </View>
+            )}
+
+            <Text className="mb-3 font-visby-bold text-gray-800">Inventory ({items.length})</Text>
+            {items.filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) > 3).map(renderItem)}
+          </>
         ) : (
-          items.filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) > 3).map(renderItem)
+          /* SINGLE UNIFIED EMPTY STATE */
+          <View className="mt-10 flex-1 items-center justify-center px-4">
+            <View className="mb-6 h-32 w-32 items-center justify-center rounded-[40px] bg-green-50 shadow-sm">
+              <Ionicons name="camera" size={56} color="#8BD65E" />
+            </View>
+
+            <Text className="mb-2 text-center font-visby-bold text-2xl text-gray-900">
+              Your Pantry is Empty
+            </Text>
+
+            <Text className="mb-8 w-3/4 text-center font-visby text-base leading-6 text-gray-400">
+              Start by scanning your fridge or receipt to instantly add ingredients!
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleCameraScan}
+              disabled={analyzing}
+              className="w-full flex-row items-center justify-center rounded-3xl bg-[#8BD65E] py-4 shadow-lg shadow-green-200 active:scale-95"
+            >
+              {analyzing ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Ionicons name="camera" size={24} color="white" style={{ marginRight: 8 }} />
+                  <Text className="font-visby-bold text-lg text-white">Scan Pantry</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setIsModalOpen(true)} className="mt-4 py-2">
+              <Text className="font-visby-bold text-gray-400">Add Manually</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View className="h-24" />
@@ -449,6 +450,111 @@ export default function PantryScreen() {
 
               <View className="h-20" />
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loading Overlay */}
+      {analyzing && (
+        <View className="absolute inset-0 z-50 items-center justify-center bg-black/50">
+          <View className="w-64 rounded-3xl bg-white p-8 shadow-2xl">
+            <ActivityIndicator size="large" color="#8BD65E" />
+            <Text className="mt-4 text-center font-visby-bold text-lg text-gray-800">
+              {loadingMessage || 'Processing...'}
+            </Text>
+            <Text className="mt-2 text-center font-visby text-sm text-gray-500">
+              This may take a few seconds
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Scan Preview Modal */}
+      <Modal visible={showScanPreview} animationType="slide" presentationStyle="pageSheet">
+        <View className="flex-1 bg-white">
+          <View className="border-b border-gray-100 bg-white px-6 pb-4 pt-16">
+            <View className="flex-row items-center justify-between">
+              <Text className="font-visby-bold text-2xl text-gray-800">Review Items</Text>
+              <TouchableOpacity onPress={() => setShowScanPreview(false)}>
+                <Ionicons name="close" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
+            <Text className="mt-2 font-visby text-gray-500">
+              {scannedItems.length} item{scannedItems.length > 1 ? 's' : ''} detected - Edit before
+              saving
+            </Text>
+          </View>
+
+          <ScrollView className="flex-1 px-6 pt-4">
+            {scannedItems.map((item, index) => (
+              <View key={index} className="mb-3 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                <View className="mb-3 flex-row items-center justify-between">
+                  <Text className="font-visby-bold text-sm text-gray-500">Item {index + 1}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const updated = scannedItems.filter((_, i) => i !== index);
+                      setScannedItems(updated);
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  className="mb-2 rounded-xl border border-gray-200 bg-white px-4 py-3 font-visby-bold text-base text-gray-800"
+                  placeholder="Item name"
+                  value={item.name}
+                  onChangeText={(text) => {
+                    const updated = [...scannedItems];
+                    updated[index].name = text;
+                    setScannedItems(updated);
+                  }}
+                />
+
+                <TextInput
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-3 font-visby text-sm text-gray-600"
+                  placeholder="Quantity"
+                  value={item.quantity}
+                  onChangeText={(text) => {
+                    const updated = [...scannedItems];
+                    updated[index].quantity = text;
+                    setScannedItems(updated);
+                  }}
+                />
+              </View>
+            ))}
+
+            {scannedItems.length === 0 && (
+              <View className="mt-10 items-center">
+                <Text className="font-visby text-gray-400">No items to save</Text>
+              </View>
+            )}
+
+            <View className="my-6 rounded-2xl bg-blue-50 p-4">
+              <View className="flex-row items-start">
+                <Ionicons name="information-circle" size={20} color="#3B82F6" />
+                <Text className="ml-2 flex-1 font-visby text-sm text-blue-600">
+                  Items will be saved with category &quot;Other&quot; and 7-day expiry. You can edit
+                  them later from your pantry.
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+
+          <View className="border-t border-gray-100 bg-white px-6 py-4">
+            <TouchableOpacity
+              onPress={handleSaveScannedItems}
+              disabled={scannedItems.length === 0}
+              className={`items-center rounded-full py-4 shadow-lg ${
+                scannedItems.length === 0 ? 'bg-gray-300' : 'bg-[#8BD65E] shadow-green-200'
+              }`}
+            >
+              <Text className="font-visby-bold text-lg text-white">
+                {scannedItems.length === 0
+                  ? 'No Items to Save'
+                  : `Save ${scannedItems.length} Item${scannedItems.length > 1 ? 's' : ''} to Pantry`}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
