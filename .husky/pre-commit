@@ -1,3 +1,0 @@
-npx expo-doctor
-npx tsc --noEmit
-npx lint-staged

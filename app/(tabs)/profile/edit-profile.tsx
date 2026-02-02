@@ -1,16 +1,19 @@
 import { UserService } from '@/lib/services/userService';
+import { ProfileService } from '@/lib/services/profileService';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { type ImagePickerAsset, launchImageLibraryAsync } from 'expo-image-picker';
 import { Stack, useNavigation, useRouter } from 'expo-router';
-import React, { useLayoutEffect, useState } from 'react';
-import { Alert, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useLayoutEffect, useState, useEffect } from 'react';
+import { Alert, Image, ScrollView, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ProfileUser } from '@/lib/types/auth';
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const token = useAuthStore((state) => state.token);
 
-  const userData = useAuthStore((state) => state.user?.user_metadata);
-
+  const [userData, setUserData] = useState<ProfileUser | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState<string | undefined>(undefined);
   const [bio, setBio] = useState<string | undefined>(undefined);
@@ -31,6 +34,24 @@ export default function EditProfileScreen() {
       });
     };
   }, [navigation]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!token) return;
+      try {
+        setLoadingProfile(true);
+        const response = await ProfileService.getProfile();
+        setUserData(response.data.user);
+      } catch (error: any) {
+        console.error('Failed to fetch profile:', error);
+        Alert.alert('Error', 'Failed to load profile data');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, [token]);
 
   const pickImage = async () => {
     const result = await launchImageLibraryAsync({
@@ -66,6 +87,22 @@ export default function EditProfileScreen() {
     }
   };
 
+  if (loadingProfile) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'Edit Profile',
+            headerTitleAlign: 'center',
+          }}
+        />
+        <View className="flex-1 items-center justify-center bg-white">
+          <ActivityIndicator size="large" color="#5FD08F" />
+        </View>
+      </>
+    );
+  }
+
   return (
     <>
       <Stack.Screen
@@ -87,7 +124,7 @@ export default function EditProfileScreen() {
             <TouchableOpacity onPress={handleSave}>
               <Ionicons name="checkmark" size={28} color="#5FD08F" />
             </TouchableOpacity>
-          ), // Placeholder to center the title
+          ),
         }}
       />
       <ScrollView className="flex-1 bg-white p-6">
@@ -97,7 +134,7 @@ export default function EditProfileScreen() {
             source={{
               uri:
                 avatarImageResult?.uri ||
-                `${userData?.avatar_url}?t=${Date.now()}` ||
+                userData?.avatar ||
                 'https://via.placeholder.com/150',
             }}
             style={{ width: 100, height: 100, borderRadius: 50 }}
@@ -112,7 +149,7 @@ export default function EditProfileScreen() {
           <View>
             <Text className="mb-2 ml-1 font-visby text-gray-500">Nama Lengkap</Text>
             <TextInput
-              value={username || userData?.username || userData?.full_name}
+              value={username || userData?.fullName}
               onChangeText={setUsername}
               className="border-b border-gray-200 pb-2 font-visby-bold text-lg text-black"
               placeholder="Nama Kamu"

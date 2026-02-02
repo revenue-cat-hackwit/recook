@@ -2,11 +2,8 @@ import AuthFooterLink from '@/components/auth/AuthFooterLink';
 import AuthHeader from '@/components/auth/AuthHeader';
 import AuthPasswordField from '@/components/auth/AuthPasswordField';
 import AuthPrimaryButton from '@/components/auth/AuthPrimaryButton';
-import AuthSocialButton from '@/components/auth/AuthSocialButton';
 import AuthTextField from '@/components/auth/AuthTextField';
 import { useAuthStore } from '@/lib/store/authStore';
-import { FontAwesome6 } from '@expo/vector-icons';
-import { AuthError } from '@supabase/supabase-js';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
@@ -14,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignUpPage() {
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,7 +22,6 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (errorMessage) {
-      //FIXME Change Alert dialog
       Alert.alert('Error', errorMessage);
       setErrorMessage(null);
     }
@@ -33,7 +30,7 @@ export default function SignUpPage() {
   const handleSignUp = async () => {
     if (isLoading) return;
 
-    if (!username || !email || !password || !confirmPassword) {
+    if (!username || !fullName || !email || !password || !confirmPassword) {
       setErrorMessage('Please fill in all fields.');
       return;
     }
@@ -43,15 +40,22 @@ export default function SignUpPage() {
       return;
     }
 
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long.');
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await signUp(username, email, password);
-    } catch (err) {
-      if (err instanceof AuthError) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage('An unexpected error occurred. Please try again.');
-      }
+      const result = await signUp(username, fullName, email, password);
+
+      // Navigate to OTP verification screen
+      router.push({
+        pathname: '/verify-otp',
+        params: { email: result.email },
+      });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +76,13 @@ export default function SignUpPage() {
             autoCapitalize="none"
             value={username}
             onChangeText={setUsername}
+          />
+          <AuthTextField
+            label="Full Name"
+            placeholder="Your full name"
+            autoCapitalize="words"
+            value={fullName}
+            onChangeText={setFullName}
           />
           <AuthTextField
             label="Email"
@@ -95,22 +106,19 @@ export default function SignUpPage() {
           />
         </View>
 
-        <AuthPrimaryButton title="Sign Up" containerClassName="mt-6" onPress={handleSignUp} />
+        <AuthPrimaryButton
+          title={isLoading ? "Creating Account..." : "Sign Up"}
+          containerClassName="mt-6"
+          onPress={handleSignUp}
+          disabled={isLoading}
+        />
 
-        <View className="mt-auto gap-4">
-          {/* TODO Add social sign-up functionality */}
-          <AuthSocialButton
-            title="Sign Up with Google"
-            icon={<FontAwesome6 name="google" size={20} color="#4285F4" />}
-          />
-
-          <AuthFooterLink
-            text="Already have an account? "
-            linkText="Sign in"
-            onPress={() => router.dismissTo('/sign-in')}
-            containerClassName="flex-row items-center justify-center pb-2"
-          />
-        </View>
+        <AuthFooterLink
+          text="Already have an account? "
+          linkText="Sign in"
+          onPress={() => router.dismissTo('/sign-in')}
+          containerClassName="mt-auto flex-row items-center justify-center pb-6"
+        />
       </View>
     </SafeAreaView>
   );
