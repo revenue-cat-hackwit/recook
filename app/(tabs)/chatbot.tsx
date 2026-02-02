@@ -564,7 +564,7 @@ export default function Chatbot() {
               <Ionicons name="menu" size={24} color="#333" />
             </TouchableOpacity>
 
-            <Text className="font-visby-bold text-xl text-gray-900">Chat</Text>
+            <Text className="font-visby-bold text-xl text-[#8BD65E]">Cooki</Text>
 
             <TouchableOpacity
               onPress={async () => {

@@ -150,13 +150,13 @@ export const ChatInput = ({
   }
   return (
     <View
-      className="mx-4 mb-6 min-h-[60px] rounded-[32px] bg-[#1E1F20] p-4 shadow-xl"
+      className="mx-4 mb-6 min-h-[60px] rounded-[32px] bg-[#E8F5E9] p-4"
       style={{
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
       }}
     >
       {/* Input Area */}
@@ -164,8 +164,8 @@ export const ChatInput = ({
         value={value}
         onChangeText={onChangeText}
         placeholder="Ask Cooki..."
-        placeholderTextColor="#9ca3af"
-        className="mb-1 max-h-[100px] font-visby text-base text-white"
+        placeholderTextColor="#78909C"
+        className="mb-1 max-h-[100px] font-visby text-base text-gray-900"
         multiline
         textAlignVertical="top"
         editable={!loading && !isTranscribing}
@@ -180,8 +180,8 @@ export const ChatInput = ({
             disabled={disabled || loading || isRecording}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#2A2B2C]">
-              <Ionicons name="add" size={24} color="#E3E3E3" />
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+              <Ionicons name="add" size={24} color="#333" />
             </View>
           </TouchableOpacity>
         </View>
@@ -202,8 +202,8 @@ export const ChatInput = ({
           {/* 2. Send OR Voice Mode Button */}
           {loading ? (
             <TouchableOpacity onPress={() => console.log('Stop Generating')} className="mr-1">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-[#2A2B2C]">
-                <Ionicons name="square" size={14} color="#E3E3E3" />
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-white">
+                <Ionicons name="square" size={14} color="#333" />
               </View>
             </TouchableOpacity>
           ) : value.trim().length > 0 ? (
@@ -214,8 +214,8 @@ export const ChatInput = ({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={() => router.push('/voice-mode')}>
-              <View className="h-10 w-10 items-center justify-center rounded-full border border-gray-700 bg-black">
-                <Ionicons name="pulse" size={24} color="white" />
+              <View className="h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white">
+                <Ionicons name="pulse" size={24} color="#8BD65E" />
               </View>
             </TouchableOpacity>
           )}

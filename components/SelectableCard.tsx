@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 
 interface SelectableCardProps {
@@ -16,6 +16,8 @@ export default function SelectableCard({
   onPress,
   showBorder = false,
 }: SelectableCardProps) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -30,17 +32,28 @@ export default function SelectableCard({
         elevation: 3,
       }}
     >
-      {/* Image Container - User will connect images later */}
+      {/* Image Container */}
       <View className="h-32 w-full items-center justify-center p-3">
         {imagePath ? (
-          <Image
-            source={{ uri: imagePath }}
-            className="h-full w-full rounded-xl"
-            resizeMode="cover"
-          />
+          <View className="relative h-full w-full">
+            {/* Loading Placeholder */}
+            {!imageLoaded && (
+              <View className="absolute inset-0 items-center justify-center rounded-xl bg-gray-200">
+                <View className="h-16 w-16 rounded-full bg-gray-300" />
+              </View>
+            )}
+
+            {/* Actual Image */}
+            <Image
+              source={{ uri: imagePath, cache: 'force-cache' }}
+              className="h-full w-full rounded-xl"
+              resizeMode="cover"
+              onLoadStart={() => setImageLoaded(false)}
+              onLoadEnd={() => setImageLoaded(true)}
+            />
+          </View>
         ) : (
           <View className="h-full w-full items-center justify-center">
-            {/* Placeholder - will be replaced with actual images */}
             <View className="h-20 w-20 rounded-full border-2 border-gray-200 bg-gray-200" />
           </View>
         )}

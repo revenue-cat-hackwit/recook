@@ -47,80 +47,111 @@ export const ChatMessage = ({ message, onSaveRecipe, onGetIdeas }: ChatMessagePr
   const timestamp = message.timestamp || Date.now();
 
   return (
-    <View className={`mb-4 flex-row ${isUser ? 'justify-end' : 'justify-start'}`}>
-      {/* Cooki Avatar for Assistant */}
-      {!isUser && (
-        <Image
-          source={require('@/assets/images/cooki.png')}
-          className="mr-2 h-10 w-10 rounded-full"
-          resizeMode="contain"
-        />
-      )}
-
-      <View
-        className={`max-w-[75%] rounded-2xl p-4 ${
-          isUser ? 'rounded-br-none bg-[#8BD65E]' : 'rounded-tl-none bg-gray-100'
-        }`}
-      >
-        {/* Cooki Name Tag */}
-        {!isUser && <Text className="mb-1 font-visby-bold text-xs text-gray-500">Cooki</Text>}
-
-        {typeof content === 'string' ? (
-          <Markdown style={markdownStyles}>{content}</Markdown>
-        ) : (
-          <View>
-            {content.map((part, index) => (
-              <View key={index}>
-                {part.type === 'text' && <Markdown style={markdownStyles}>{part.text}</Markdown>}
-                {part.type === 'image_url' && part.image_url && (
-                  <Image
-                    source={{ uri: part.image_url.url }}
-                    className="mt-2 h-40 w-full rounded-lg bg-gray-200"
-                    resizeMode="cover"
-                  />
-                )}
-                {part.type === 'video_url' && part.video_url && (
-                  <View className="mt-2 h-48 w-full overflow-hidden rounded-lg bg-gray-900">
-                    <Video
-                      source={{ uri: part.video_url.url }}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode={ResizeMode.CONTAIN}
-                      useNativeControls
-                      shouldPlay={false}
-                    />
-                  </View>
-                )}
-              </View>
-            ))}
+    <View className="mb-4">
+      {!isUser ? (
+        // Cooki Message Layout
+        <View>
+          {/* Cooki Avatar + Name */}
+          <View className="mb-2 flex-row items-center gap-2">
+            <Image
+              source={require('@/assets/images/cooki.png')}
+              className="h-12 w-12 rounded-full"
+              resizeMode="contain"
+            />
+            <Text className="text-md font-visby-bold text-gray-700">Cooki</Text>
           </View>
-        )}
-        <Text
-          className={`mt-1 text-[10px] ${
-            isUser ? 'text-white/70' : 'text-gray-400'
-          } text-right font-visby`}
-        >
-          {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
 
-      {/* Inline Action Buttons - Only show for Cooki messages with recipes */}
-      {hasRecipe && (
-        <View className="mt-2 flex-row gap-2">
-          <TouchableOpacity
-            onPress={() => onSaveRecipe?.(contentStr)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-green-100 bg-green-50 px-3 py-2"
-          >
-            <Ionicons name="bookmark" size={14} color="#10B981" />
-            <Text className="font-visby-bold text-xs text-green-700">Save Recipe</Text>
-          </TouchableOpacity>
+          {/* Cooki Message Bubble */}
+          <View className="max-w-[85%] rounded-2xl bg-gray-100 p-4">
+            {typeof content === 'string' ? (
+              <Markdown style={markdownStyles}>{content}</Markdown>
+            ) : (
+              <View>
+                {content.map((part, index) => (
+                  <View key={index}>
+                    {part.type === 'text' && (
+                      <Markdown style={markdownStyles}>{part.text}</Markdown>
+                    )}
+                    {part.type === 'image_url' && part.image_url && (
+                      <Image
+                        source={{ uri: part.image_url.url }}
+                        className="mt-2 h-40 w-full rounded-lg bg-gray-200"
+                        resizeMode="cover"
+                      />
+                    )}
+                    {part.type === 'video_url' && part.video_url && (
+                      <View className="mt-2 h-48 w-full overflow-hidden rounded-lg bg-gray-900">
+                        <Video
+                          source={{ uri: part.video_url.url }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode={ResizeMode.CONTAIN}
+                          useNativeControls
+                          shouldPlay={false}
+                        />
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+            <Text className="mt-1 text-right font-visby text-[10px] text-gray-400">
+              {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
 
-          <TouchableOpacity
-            onPress={onGetIdeas}
-            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2"
-          >
-            <Ionicons name="bulb" size={14} color="#F97316" />
-            <Text className="font-visby-bold text-xs text-orange-700">Get Ideas</Text>
-          </TouchableOpacity>
+          {/* Inline Action Buttons - Only show for Cooki messages with recipes */}
+          {hasRecipe && (
+            <View className="mt-2 max-w-[85%] flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => onSaveRecipe?.(contentStr)}
+                className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-green-100 bg-green-50 px-3 py-2"
+              >
+                <Ionicons name="bookmark" size={14} color="#10B981" />
+                <Text className="font-visby-bold text-xs text-green-700">Save Recipe</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={onGetIdeas}
+                className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2"
+              >
+                <Ionicons name="bulb" size={14} color="#F97316" />
+                <Text className="font-visby-bold text-xs text-orange-700">Get Ideas</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ) : (
+        // User Message Layout - Right Aligned
+        <View className="items-end">
+          {/* Username Label */}
+          <Text className="mb-2 font-visby-bold text-sm text-gray-700">You</Text>
+
+          {/* User Message Bubble */}
+          <View className="max-w-[85%] rounded-2xl bg-[#E8F5E9] p-4">
+            {typeof content === 'string' ? (
+              <Text className="font-visby text-base text-gray-900">{content}</Text>
+            ) : (
+              <View>
+                {content.map((part, index) => (
+                  <View key={index}>
+                    {part.type === 'text' && (
+                      <Text className="font-visby text-base text-gray-900">{part.text}</Text>
+                    )}
+                    {part.type === 'image_url' && part.image_url && (
+                      <Image
+                        source={{ uri: part.image_url.url }}
+                        className="mt-2 h-40 w-full rounded-lg bg-gray-200"
+                        resizeMode="cover"
+                      />
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+            <Text className="mt-1 text-right font-visby text-[10px] text-gray-400">
+              {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
         </View>
       )}
     </View>
