@@ -84,10 +84,9 @@ function MealPlannerContent() {
   // Track image generation per recipe ID
   const [generatingImages, setGeneratingImages] = useState<Set<string>>(new Set());
 
-  // Shopping List & Pantry Integration
+  // Pantry Integration
   const addToShoppingList = useShoppingListStore((state) => state.addMultiple);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
-  const [addingToShoppingList, setAddingToShoppingList] = useState(false);
 
   // Custom Alert State
   const [alertConfig, setAlertConfig] = useState<{
@@ -368,7 +367,9 @@ function MealPlannerContent() {
   };
 
   const handleShareRecipe = async (recipe: Recipe) => {
-    const ingredientsList = recipe.ingredients.map((i) => `• ${i}`).join('\n');
+    const ingredientsList = recipe.ingredients
+      .map((i) => `• ${i.quantity} ${i.unit} ${i.item}`)
+      .join('\n');
     const stepsList = recipe.steps.map((s) => `${s.step}. ${s.instruction}`).join('\n\n');
 
     const message =
@@ -427,101 +428,6 @@ function MealPlannerContent() {
         newSet.delete(recipe.id!);
         return newSet;
       });
-    }
-  };
-
-  // Add all week's ingredients to shopping list
-  const handleAddWeekToShoppingList = async () => {
-    setAddingToShoppingList(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      if (mealPlans.length === 0) {
-        showAlert({
-          title: 'No Meals Planned',
-          message: 'Your weekly plan is empty. Generate or add some meals first!',
-          icon: <Danger size={32} color="#EF4444" variant="Bold" />,
-        });
-        return;
-      }
-
-      // Get all unique ingredients from this week's meal plans
-      const allIngredients: { name: string; quantity?: number; unit?: string }[] = [];
-      const ingredientMap = new Map<string, { quantity: number; unit: string }>();
-
-      mealPlans.forEach((plan) => {
-        if (plan.recipe.ingredients && plan.recipe.ingredients.length > 0) {
-          plan.recipe.ingredients.forEach((ingredient) => {
-            // Simple ingredient parsing (you can enhance this)
-            const ingredientStr =
-              typeof ingredient === 'string' ? ingredient : (ingredient as any).name || '';
-
-            if (!ingredientStr || ingredientStr.trim().length === 0) return; // Skip empty ingredients
-
-            const lowerIngredient = ingredientStr.toLowerCase().trim();
-
-            // Check if ingredient is already in pantry
-            let inPantry = false;
-            if (pantryItems.length > 0) {
-              inPantry = pantryItems.some(
-                (item) =>
-                  item.ingredient_name &&
-                  item.ingredient_name.trim().length > 0 &&
-                  (item.ingredient_name.toLowerCase().includes(lowerIngredient) ||
-                    lowerIngredient.includes(item.ingredient_name.toLowerCase())),
-              );
-            }
-
-            if (!inPantry) {
-              // Add to map to avoid duplicates
-              if (!ingredientMap.has(lowerIngredient)) {
-                ingredientMap.set(lowerIngredient, { quantity: 1, unit: '' });
-              }
-            }
-          });
-        }
-      });
-
-      // Convert map to array
-      ingredientMap.forEach((value, key) => {
-        allIngredients.push({ name: key, quantity: value.quantity, unit: value.unit });
-      });
-
-      if (allIngredients.length === 0) {
-        // If we had meals but no ingredients to add
-        const msg =
-          pantryItems.length > 0
-            ? 'All ingredients are already in your pantry.'
-            : 'No ingredients found in your planned meals.';
-
-        showAlert({
-          title: 'All Set!',
-          message: msg,
-          icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
-        });
-        return;
-      }
-
-      await addToShoppingList(allIngredients, 'Weekly Meal Plan');
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showAlert({
-        title: 'Added to Shopping List! 🛒',
-        message: `${allIngredients.length} ingredients added to your shopping list.\n\nIngredients already in your pantry were skipped.`,
-        confirmText: 'View List',
-        icon: <ShoppingCart size={32} color="#3B82F6" variant="Bold" />,
-        onConfirm: () => Router.push('/shopping-list'),
-      });
-    } catch (error) {
-      console.error('Failed to add to shopping list:', error);
-      showAlert({
-        title: 'Error',
-        message: 'Failed to add ingredients to shopping list. Please try again.',
-        type: 'destructive',
-        icon: <Danger size={32} color="#EF4444" variant="Bold" />,
-      });
-    } finally {
-      setAddingToShoppingList(false);
     }
   };
 
@@ -691,9 +597,7 @@ function MealPlannerContent() {
                           const totalIngredients = item.recipe.ingredients?.length || 0;
                           const availableInPantry =
                             item.recipe.ingredients?.filter((ing) => {
-                              const ingredientStr =
-                                typeof ing === 'string' ? ing : (ing as any).name || '';
-                              const lowerIng = ingredientStr.toLowerCase().trim();
+                              const lowerIng = ing.item?.toLowerCase().trim() || '';
                               return pantryItems.some(
                                 (pantryItem) =>
                                   pantryItem.ingredient_name.toLowerCase().includes(lowerIng) ||
@@ -777,10 +681,11 @@ function MealPlannerContent() {
                       }
 
                       const ingredientsToAdd = ingredients
-                        .map((ing) => {
-                          const name = typeof ing === 'string' ? ing : (ing as any).name || '';
-                          return { name };
-                        })
+                        .map((ing) => ({
+                          name: ing.item,
+                          quantity: ing.quantity,
+                          unit: ing.unit,
+                        }))
                         .filter((ing) => {
                           const lowerIng = ing.name.toLowerCase().trim();
                           return !pantryItems.some(
@@ -791,7 +696,15 @@ function MealPlannerContent() {
                         });
 
                       if (ingredientsToAdd.length > 0) {
-                        addToShoppingList(ingredientsToAdd, item.recipe.title);
+                        const normalizedIngredients = ingredientsToAdd.map((ing) => ({
+                          name: ing.name,
+                          quantity:
+                            typeof ing.quantity === 'string'
+                              ? parseFloat(ing.quantity) || undefined
+                              : ing.quantity,
+                          unit: ing.unit,
+                        }));
+                        addToShoppingList(normalizedIngredients, item.recipe.title);
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                         showAlert({
                           title: 'Added! 🛒',
@@ -873,40 +786,23 @@ function MealPlannerContent() {
               <Text className="font-visby text-xs text-gray-500">Plan your perfect week</Text>
             </View>
 
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={handleAddWeekToShoppingList}
-                disabled={addingToShoppingList || mealPlans.length === 0}
-                className="rounded-full bg-blue-50 p-2.5 shadow-sm"
-                style={{
-                  opacity: addingToShoppingList || mealPlans.length === 0 ? 0.5 : 1,
-                }}
-              >
-                {addingToShoppingList ? (
-                  <ActivityIndicator size="small" color="#3B82F6" />
-                ) : (
-                  <Ionicons name="cart" size={20} color="#3B82F6" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleGeneratePlan}
-                disabled={loading}
-                className="rounded-full bg-gradient-to-r from-green-400 to-green-600 p-2.5 shadow-md"
-                style={{
-                  backgroundColor: loading ? '#E5E7EB' : '#8BD65E',
-                  shadowColor: '#8BD65E',
-                  shadowOpacity: 0.3,
-                  shadowRadius: 6,
-                }}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <MagicStar size={20} color="white" variant="Bold" />
-                )}
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={handleGeneratePlan}
+              disabled={loading}
+              className="rounded-full bg-gradient-to-r from-green-400 to-green-600 p-2.5 shadow-md"
+              style={{
+                backgroundColor: loading ? '#E5E7EB' : '#8BD65E',
+                shadowColor: '#8BD65E',
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <MagicStar size={20} color="white" variant="Bold" />
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Date Strips */}

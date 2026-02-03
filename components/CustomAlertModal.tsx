@@ -72,11 +72,11 @@ export const CustomAlertModal: React.FC<CustomAlertModalProps> = ({
           </Animated.View>
 
           {/* Modal Content */}
-          <View className="pointer-events-none flex-1 items-center justify-center px-6">
+          <View className="pointer-events-box-none flex-1 items-center justify-center px-6">
             <Animated.View
               entering={ZoomIn.duration(200).easing(Easing.out(Easing.quad))}
               exiting={ZoomOut.duration(200).easing(Easing.in(Easing.quad))}
-              className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1E1F20]"
+              className="pointer-events-auto w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1E1F20]"
             >
               {/* Icon */}
               <View

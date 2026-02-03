@@ -402,7 +402,29 @@ export default function Chatbot() {
         ? ingredientsMatch[1]
             .split('\n')
             .filter((l) => l.trim())
-            .map((l) => l.replace(/^[-•\d.)\s]+/, '').trim())
+            .map((l) => {
+              // Remove bullet points and numbering
+              const cleaned = l.replace(/^[-•\d.)\s]+/, '').trim();
+
+              // Try to parse quantity, unit, and item
+              // Pattern: "200g Chicken" or "2 cups flour" or "1/2 tsp salt"
+              const match = cleaned.match(/^([\d./]+)\s*([a-zA-Z]+)?\s+(.+)$/);
+
+              if (match) {
+                return {
+                  quantity: match[1],
+                  unit: match[2] || 'pcs',
+                  item: match[3],
+                };
+              }
+
+              // If no pattern match, treat whole string as item with quantity 1
+              return {
+                quantity: '1',
+                unit: 'pcs',
+                item: cleaned,
+              };
+            })
         : [];
 
       // Extract steps
@@ -655,7 +677,15 @@ export default function Chatbot() {
             onScroll={Animated.event([], { useNativeDriver: false })}
             scrollEventThrottle={16}
             ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
-            ListEmptyComponent={<EmptyChat />}
+            ListEmptyComponent={
+              <EmptyChat
+                onSuggestionPress={(text) => {
+                  setInputText(text);
+                  // Trigger send after setting input text
+                  setTimeout(() => sendMessage(), 100);
+                }}
+              />
+            }
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => {
               // Auto scroll to bottom when new message

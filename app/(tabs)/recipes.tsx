@@ -215,7 +215,7 @@ export default function SavedRecipesScreen() {
           recipe.title.toLowerCase().includes(query) ||
           (recipe.description && recipe.description.toLowerCase().includes(query)) ||
           (recipe.ingredients &&
-            recipe.ingredients.some((ing) => ing.toLowerCase().includes(query))),
+            recipe.ingredients.some((ing) => ing.item.toLowerCase().includes(query))),
       );
     }
 
@@ -345,7 +345,9 @@ export default function SavedRecipesScreen() {
   };
 
   const handleShareRecipe = async (recipe: Recipe) => {
-    const ingredientsList = recipe.ingredients.map((i) => `• ${i}`).join('\n');
+    const ingredientsList = recipe.ingredients
+      .map((i) => `• ${i.quantity} ${i.unit} ${i.item}`)
+      .join('\n');
     const stepsList = recipe.steps.map((s) => `${s.step}. ${s.instruction}`).join('\n\n');
 
     const message =

@@ -168,7 +168,14 @@ export default function GenerateScreen() {
               {!isBrief && (
                 <TouchableOpacity
                   onPress={() => {
-                    const ingredientsToAdd = recipe.ingredients.map((ing) => ({ name: ing }));
+                    const ingredientsToAdd = recipe.ingredients.map((ing) => ({
+                      name: ing.item,
+                      quantity:
+                        typeof ing.quantity === 'string'
+                          ? parseFloat(ing.quantity) || undefined
+                          : ing.quantity,
+                      unit: ing.unit,
+                    }));
                     addToShoppingList(ingredientsToAdd, recipe.title);
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     toastRef.current?.show('Added to Shopping List', 'success');
@@ -207,7 +214,12 @@ export default function GenerateScreen() {
             {recipe.ingredients.map((ing, idx) => (
               <View key={idx} className="mb-2 flex-row items-center">
                 <View className="mr-3 h-1.5 w-1.5 rounded-full bg-red-400" />
-                <Text className="flex-1 font-visby text-base text-gray-700">{ing}</Text>
+                <Text className="flex-1 font-visby text-base text-gray-700">
+                  <Text className="font-visby-semibold">
+                    {ing.quantity} {ing.unit}
+                  </Text>{' '}
+                  {ing.item}
+                </Text>
               </View>
             ))}
           </View>
@@ -241,7 +253,7 @@ export default function GenerateScreen() {
     setTempManualRecipe({
       title: '',
       description: '',
-      ingredients: [''],
+      ingredients: [{ item: '', quantity: '', unit: '' }],
       steps: [{ step: '1', instruction: '' }],
       time_minutes: '30',
       difficulty: 'Medium',

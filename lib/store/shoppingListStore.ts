@@ -93,34 +93,173 @@ export const useShoppingListStore = create<ShoppingListState>()(
       },
 
       addMultiple: async (newItemsData, fromRecipe) => {
-        // Optimistic
-        const newItems: ShoppingItem[] = newItemsData.map((item) => ({
-          id: Date.now().toString() + Math.random(),
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          isChecked: false,
-          fromRecipe,
-        }));
-        set((state) => ({ items: [...newItems, ...state.items] }));
-
-        // Cloud
         const { data: userData } = await supabase.auth.getUser();
-        if (userData.user) {
-          const payload = newItemsData.map((item) => ({
+        if (!userData.user) return;
+
+        // Fetch pantry items for smart checking
+        const { data: pantryData } = await supabase
+          .from('pantry_items')
+          .select('ingredient_name, quantity')
+          .eq('user_id', userData.user.id);
+
+        // Helper function to normalize units
+        const normalizeToGrams = (qty: number, unit: string): number | null => {
+          const unitLower = unit.toLowerCase().trim();
+          const conversions: { [key: string]: number } = {
+            kg: 1000,
+            g: 1,
+            mg: 0.001,
+            lb: 453.592,
+            oz: 28.3495,
+            l: 1000,
+            ml: 1,
+            cup: 240,
+            tbsp: 15,
+            tsp: 5,
+          };
+          return conversions[unitLower] ? qty * conversions[unitLower] : null;
+        };
+
+        // Aggregate items with same name and unit
+        const aggregatedMap = new Map<
+          string,
+          { name: string; quantity: number; unit: string; recipes: string[] }
+        >();
+
+        newItemsData.forEach((item) => {
+          const key = `${item.name.toLowerCase().trim()}_${(item.unit || '').toLowerCase()}`;
+
+          if (aggregatedMap.has(key)) {
+            const existing = aggregatedMap.get(key)!;
+            existing.quantity += item.quantity || 0;
+            if (fromRecipe && !existing.recipes.includes(fromRecipe)) {
+              existing.recipes.push(fromRecipe);
+            }
+          } else {
+            aggregatedMap.set(key, {
+              name: item.name,
+              quantity: item.quantity || 0,
+              unit: item.unit || '',
+              recipes: fromRecipe ? [fromRecipe] : [],
+            });
+          }
+        });
+
+        // Check pantry and calculate deficit
+        const itemsAfterPantryCheck: typeof aggregatedMap = new Map();
+
+        aggregatedMap.forEach((aggItem) => {
+          let finalQuantity = aggItem.quantity;
+
+          // Find matching pantry item
+          const pantryItem = pantryData?.find((p: any) => {
+            const pantryName = p.ingredient_name?.toLowerCase().trim() || '';
+            const itemName = aggItem.name.toLowerCase().trim();
+            return pantryName.includes(itemName) || itemName.includes(pantryName);
+          });
+
+          if (pantryItem && aggItem.unit) {
+            // Extract pantry quantity and unit
+            const pantryQtyStr = pantryItem.quantity || '';
+            const pantryMatch = pantryQtyStr.match(/^([\d.]+)\s*([a-zA-Z]+)?$/);
+
+            if (pantryMatch) {
+              const pantryQty = parseFloat(pantryMatch[1]);
+              const pantryUnit = pantryMatch[2] || aggItem.unit;
+
+              // Try to normalize and compare
+              const neededNormalized = normalizeToGrams(aggItem.quantity, aggItem.unit);
+              const availableNormalized = normalizeToGrams(pantryQty, pantryUnit);
+
+              if (neededNormalized && availableNormalized) {
+                const deficit = neededNormalized - availableNormalized;
+
+                if (deficit > 0) {
+                  // Need more - convert back to original unit
+                  const unitConversion = normalizeToGrams(1, aggItem.unit) || 1;
+                  finalQuantity = Math.ceil(deficit / unitConversion);
+                } else {
+                  // Have enough - skip adding
+                  finalQuantity = 0;
+                }
+              }
+            }
+          }
+
+          if (finalQuantity > 0) {
+            itemsAfterPantryCheck.set(aggItem.name + aggItem.unit, {
+              ...aggItem,
+              quantity: finalQuantity,
+            });
+          }
+        });
+
+        // Check if items already exist in shopping list
+        const existingItems = get().items;
+        const itemsToAdd: ShoppingItem[] = [];
+        const itemsToUpdate: { id: string; quantity: number }[] = [];
+
+        itemsAfterPantryCheck.forEach((aggItem) => {
+          const existing = existingItems.find(
+            (i) =>
+              i.name.toLowerCase().trim() === aggItem.name.toLowerCase().trim() &&
+              (i.unit || '').toLowerCase() === aggItem.unit.toLowerCase() &&
+              !i.isChecked,
+          );
+
+          if (existing) {
+            // Update existing item - add quantities
+            const newQty = (existing.quantity || 0) + aggItem.quantity;
+            itemsToUpdate.push({ id: existing.id, quantity: newQty });
+          } else {
+            // Add new item
+            const recipeText = aggItem.recipes.length > 0 ? aggItem.recipes.join(', ') : fromRecipe;
+            itemsToAdd.push({
+              id: Date.now().toString() + Math.random(),
+              name: aggItem.name,
+              quantity: aggItem.quantity,
+              unit: aggItem.unit,
+              isChecked: false,
+              fromRecipe: recipeText,
+            });
+          }
+        });
+
+        // Optimistic update
+        set((state) => ({
+          items: [
+            ...itemsToAdd,
+            ...state.items.map((item) => {
+              const update = itemsToUpdate.find((u) => u.id === item.id);
+              return update ? { ...item, quantity: update.quantity } : item;
+            }),
+          ],
+        }));
+
+        // Cloud operations
+        if (itemsToAdd.length > 0) {
+          const payload = itemsToAdd.map((item) => ({
             user_id: userData.user!.id,
             name: item.name,
             quantity: item.quantity,
             unit: item.unit,
-            from_recipe_name: fromRecipe,
+            from_recipe_name: item.fromRecipe,
             is_checked: false,
           }));
-
           await supabase.from('shopping_list_items').insert(payload);
-          // We won't bother replacing IDs for bulk add strictly right now to save complexity,
-          // but calling sync() afterwards is good practice.
-          get().sync();
         }
+
+        if (itemsToUpdate.length > 0) {
+          for (const update of itemsToUpdate) {
+            await supabase
+              .from('shopping_list_items')
+              .update({ quantity: update.quantity })
+              .eq('id', update.id);
+          }
+        }
+
+        // Sync to get correct IDs
+        get().sync();
       },
 
       toggleItem: async (id) => {

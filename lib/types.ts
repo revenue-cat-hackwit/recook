@@ -36,11 +36,17 @@ export interface RecipeStep {
   instruction: string;
 }
 
+export interface Ingredient {
+  item: string;
+  quantity: number | string;
+  unit: string;
+}
+
 export interface Recipe {
   id?: string;
   title: string;
   description: string;
-  ingredients: string[];
+  ingredients: Ingredient[];
   steps: RecipeStep[];
   time_minutes: string;
   difficulty: string;

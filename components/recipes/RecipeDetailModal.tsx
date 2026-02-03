@@ -176,7 +176,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
         tempRecipe &&
         (tempRecipe.title?.trim() ||
           tempRecipe.description?.trim() ||
-          (tempRecipe.ingredients && tempRecipe.ingredients.some((i) => i.trim())) ||
+          (tempRecipe.ingredients && tempRecipe.ingredients.some((i) => i.item.trim())) ||
           (tempRecipe.steps && tempRecipe.steps.some((s) => s.instruction?.trim())));
 
       if (hasData) {
@@ -248,10 +248,20 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
     }
   };
 
-  const handleAddIngredientsToShoppingList = () => {
+  const handleAddIngredientsToShoppingList = async () => {
     if (recipe) {
-      const ingredientsData = (recipe.ingredients || []).map((name) => ({ name }));
-      addToShoppingList(ingredientsData, recipe.title);
+      const ingredientsData = (recipe.ingredients || []).map((ing) => ({
+        name: ing.item,
+        quantity:
+          typeof ing.quantity === 'number'
+            ? ing.quantity
+            : parseFloat(String(ing.quantity)) || undefined,
+        unit: ing.unit,
+      }));
+
+      // Add with pantry check handled by store
+      await addToShoppingList(ingredientsData, recipe.title);
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showAlert('Success', 'Ingredients added to Shopping List!', undefined, {
         icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
@@ -647,7 +657,9 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                         },
                       );
                       const result = await RecipeService.calculateNutrition(
-                        tempRecipe.ingredients,
+                        tempRecipe.ingredients.map(
+                          (ing) => `${ing.quantity} ${ing.unit} ${ing.item}`,
+                        ),
                         tempRecipe.servings || '1',
                       );
 
@@ -891,17 +903,45 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
 
                 {isEditing
                   ? (tempRecipe?.ingredients || []).map((item, i) => (
-                      <View key={i} className="mb-2 flex-row items-center">
+                      <View key={i} className="mb-3 flex-row items-center gap-2">
                         <TextInput
-                          value={item}
+                          value={String(item.quantity)}
                           onChangeText={(txt) => {
                             setTempRecipe((prev) => {
                               if (!prev) return null;
                               const newIng = [...(prev.ingredients || [])];
-                              newIng[i] = txt;
+                              newIng[i] = { ...newIng[i], quantity: txt };
                               return { ...prev, ingredients: newIng };
                             });
                           }}
+                          placeholder="Qty"
+                          className="w-16 rounded border border-gray-200 bg-gray-50 p-2 text-center text-black dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                          keyboardType="numeric"
+                        />
+                        <TextInput
+                          value={item.unit}
+                          onChangeText={(txt) => {
+                            setTempRecipe((prev) => {
+                              if (!prev) return null;
+                              const newIng = [...(prev.ingredients || [])];
+                              newIng[i] = { ...newIng[i], unit: txt };
+                              return { ...prev, ingredients: newIng };
+                            });
+                          }}
+                          placeholder="Unit"
+                          className="w-16 rounded border border-gray-200 bg-gray-50 p-2 text-center text-black dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        />
+                        <TextInput
+                          value={item.item}
+                          onChangeText={(txt) => {
+                            setTempRecipe((prev) => {
+                              if (!prev) return null;
+                              const newIng = [...(prev.ingredients || [])];
+                              newIng[i] = { ...newIng[i], item: txt };
+                              return { ...prev, ingredients: newIng };
+                            });
+                          }}
+                          placeholder="Ingredient name"
                           className="mr-2 flex-1 rounded border border-gray-200 bg-gray-50 p-2 text-black dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         />
                         <TouchableOpacity
@@ -921,7 +961,10 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                       <View key={i} className="mb-2 flex-row items-start">
                         <Text className="mr-2 text-[#8BD65E]">•</Text>
                         <Text className="font-visby text-base text-gray-700 dark:text-gray-300">
-                          {item}
+                          <Text className="font-visby-semibold">
+                            {item.quantity} {item.unit}
+                          </Text>{' '}
+                          {item.item}
                         </Text>
                       </View>
                     ))}
@@ -933,7 +976,10 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                         prev
                           ? {
                               ...prev,
-                              ingredients: [...(prev.ingredients || []), ''],
+                              ingredients: [
+                                ...(prev.ingredients || []),
+                                { item: '', quantity: '', unit: '' },
+                              ],
                             }
                           : null,
                       );
