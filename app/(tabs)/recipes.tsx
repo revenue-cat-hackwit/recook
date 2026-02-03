@@ -332,7 +332,6 @@ export default function SavedRecipesScreen() {
     };
     setTempManualRecipe(blankRecipe);
     setManualModalVisible(true);
-    setShowMenu(false); // Close menu
   };
 
   const handleSaveManual = async (recipe: Recipe) => {
