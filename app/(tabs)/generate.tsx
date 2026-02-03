@@ -389,19 +389,19 @@ export default function GenerateScreen() {
         {/* Option 2: Manual Entry */}
         <TouchableOpacity
           onPress={handleStartManual}
-          className="active:scale-98 mb-8 flex-row items-center justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-100/50"
+          className="active:scale-98 mb-8 flex-row items-center justify-between rounded-3xl border border-[#8BD65E]/30 bg-[#F0FDF4] p-6 shadow-xl shadow-green-100/50"
         >
           <View className="flex-1">
             <View className="mb-1 flex-row items-center gap-2">
-              <Ionicons name="create-outline" size={22} color="#4B5563" />
-              <Text className="font-visby-bold text-lg text-gray-900">Write Manually</Text>
+              <Ionicons name="create-outline" size={22} color="#8BD65E" />
+              <Text className="font-visby-bold text-lg text-[#8BD65E]">Write Manually</Text>
             </View>
-            <Text className="font-visby text-sm text-gray-400">
+            <Text className="font-visby text-sm text-gray-500">
               Create your own recipe from scratch
             </Text>
           </View>
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-gray-50">
-            <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-[#8BD65E]/10">
+            <Ionicons name="chevron-forward" size={24} color="#8BD65E" />
           </View>
         </TouchableOpacity>
 
