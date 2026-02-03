@@ -137,32 +137,37 @@ function MealPlannerContent() {
     });
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const start = formatDate(dates[0]);
-      const end = formatDate(dates[dates.length - 1]);
-      const plans = await MealPlannerService.getMealPlans(start, end);
-      setMealPlans(plans);
-
-      // Also fetch recipes for picker
-      const recipes = await RecipeService.getUserRecipes();
-      setMyRecipes(recipes);
-
-      // Load pantry items for availability check
-      try {
-        const pantry = await PantryService.getPantryItems();
-        setPantryItems(pantry);
-      } catch (e) {
-        console.error('Failed to load pantry:', e);
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (!isRefresh) {
+        setLoading(true);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      try {
+        const start = formatDate(dates[0]);
+        const end = formatDate(dates[dates.length - 1]);
+        const plans = await MealPlannerService.getMealPlans(start, end);
+        setMealPlans(plans);
+
+        // Also fetch recipes for picker
+        const recipes = await RecipeService.getUserRecipes();
+        setMyRecipes(recipes);
+
+        // Load pantry items for availability check
+        try {
+          const pantry = await PantryService.getPantryItems();
+          setPantryItems(pantry);
+        } catch (e) {
+          console.error('Failed to load pantry:', e);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [dates],
+  );
 
   useEffect(() => {
     loadData();
@@ -185,7 +190,7 @@ function MealPlannerContent() {
     try {
       await MealPlannerService.addMealPlan(recipe.id!, formatDate(selectedDate), targetMealType);
       setIsAddModalOpen(false);
-      loadData(); // Refresh
+      loadData(true); // Refresh
     } catch (e: any) {
       showAlert({ title: 'Error', message: e.message, type: 'destructive', icon: 'alert-circle' });
     }
@@ -194,7 +199,7 @@ function MealPlannerContent() {
   const handleDeleteMeal = async (id: string) => {
     try {
       await MealPlannerService.deleteMealPlan(id);
-      loadData();
+      loadData(true);
     } catch (e) {
       console.error(e);
     }
@@ -267,7 +272,7 @@ function MealPlannerContent() {
         type: 'default',
       });
       setIsAutoPlanModalOpen(false);
-      loadData();
+      loadData(true);
     } catch (e: any) {
       console.error('Auto Plan Error:', e);
       let errorMsg = e.message || 'Something went wrong.';
@@ -323,7 +328,7 @@ function MealPlannerContent() {
         }
       }
 
-      loadData(); // Refresh meal plans
+      loadData(true); // Refresh meal plans
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       showAlert({
@@ -348,7 +353,7 @@ function MealPlannerContent() {
         try {
           await RecipeService.deleteRecipe(id);
           setSelectedRecipe(null);
-          loadData();
+          loadData(true);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (e: any) {
           showAlert({
@@ -384,7 +389,7 @@ function MealPlannerContent() {
     const result = await completeRecipe(recipe);
     if (result && result.success && result.data) {
       setSelectedRecipe(result.data);
-      loadData(); // Refresh to show completed recipe in meal plan
+      loadData(true); // Refresh to show completed recipe in meal plan
       showAlert({
         title: 'Recipe Completed',
         message: 'Your recipe details are ready! 👨‍🍳',
@@ -406,7 +411,7 @@ function MealPlannerContent() {
       await RecipeService.updateRecipe(updatedRecipe);
 
       // Refresh meal plans to show new image
-      loadData();
+      loadData(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Image generation failed:', error);
@@ -966,7 +971,15 @@ function MealPlannerContent() {
 
         <ScrollView
           className="flex-1"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={loadData} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadData(true);
+              }}
+            />
+          }
         >
           <View className="flex-row items-center justify-between bg-gradient-to-b from-white to-transparent px-5 pb-2 pt-4">
             <Text className="font-visby-bold text-xs uppercase tracking-wider text-gray-400">
@@ -987,9 +1000,20 @@ function MealPlannerContent() {
             )}
           </View>
 
-          {renderMealSection('breakfast', '🍳', 'Breakfast')}
-          {renderMealSection('lunch', '🍱', 'Lunch')}
-          {renderMealSection('dinner', '🍽️', 'Dinner')}
+          {loading ? (
+            <View className="flex-1 items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#8BD65E" />
+              <Text className="mt-4 font-visby text-sm text-gray-500">
+                Loading your meal plan...
+              </Text>
+            </View>
+          ) : (
+            <>
+              {renderMealSection('breakfast', '🍳', 'Breakfast')}
+              {renderMealSection('lunch', '🍱', 'Lunch')}
+              {renderMealSection('dinner', '🍽️', 'Dinner')}
+            </>
+          )}
 
           <View className="h-20" />
         </ScrollView>
