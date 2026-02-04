@@ -145,6 +145,17 @@ export const RecipeService = {
 
       const data = await response.json();
 
+      // Check if backend returned an error (e.g., no food detected)
+      if (data.error) {
+        // Preserve the original error message from backend
+        throw new Error(
+          JSON.stringify({
+            error: data.error,
+            message: data.message || 'Recipe generation failed',
+          }),
+        );
+      }
+
       if (data.success && data.data) {
         return {
           ...data.data,

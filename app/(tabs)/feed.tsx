@@ -1,6 +1,13 @@
 // @/app/(tabs)/feed.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PostService } from '@/lib/services/postService';
 import { Post, CurrentUser } from '@/lib/types/post';
@@ -36,7 +43,7 @@ export default function Feed() {
       if (isRefresh || pageNum === 1) {
         setPosts(response.data.posts);
       } else {
-        setPosts(prev => [...prev, ...response.data.posts]);
+        setPosts((prev) => [...prev, ...response.data.posts]);
       }
 
       setHasMore(response.data.pagination.hasNextPage);
@@ -66,16 +73,16 @@ export default function Feed() {
 
   const handleLike = async (postId: string) => {
     // Optimistic update
-    setPosts(prev =>
-      prev.map(post =>
+    setPosts((prev) =>
+      prev.map((post) =>
         post.id === postId
           ? {
-            ...post,
-            isLiked: !post.isLiked,
-            likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
-          }
-          : post
-      )
+              ...post,
+              isLiked: !post.isLiked,
+              likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
+            }
+          : post,
+      ),
     );
 
     // TODO: Call API to like/unlike post
@@ -113,7 +120,7 @@ export default function Feed() {
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#FF6B6B" />
           <Text className="mt-3 font-visby text-sm text-gray-500 dark:text-gray-400">
-            Memuat feeds...
+            Loading feeds...
           </Text>
         </View>
       </SafeAreaView>
@@ -125,15 +132,15 @@ export default function Feed() {
       <SafeAreaView className="flex-1 bg-white dark:bg-[#0F0F0F]">
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-          <Text className="mt-4 font-visby-bold text-lg text-gray-900 dark:text-white text-center">
-            Gagal Memuat Feeds
+          <Text className="mt-4 text-center font-visby-bold text-lg text-gray-900 dark:text-white">
+            failed loading Feeds
           </Text>
-          <Text className="mt-2 font-visby text-sm text-gray-500 dark:text-gray-400 text-center">
+          <Text className="mt-2 text-center font-visby text-sm text-gray-500 dark:text-gray-400">
             {error}
           </Text>
           <TouchableOpacity
             onPress={() => fetchFeeds(1)}
-            className="mt-6 bg-[#FF6B6B] px-6 py-3 rounded-full"
+            className="mt-6 rounded-full bg-[#FF6B6B] px-6 py-3"
             activeOpacity={0.8}
           >
             <Text className="font-visby-demibold text-white">Coba Lagi</Text>
@@ -171,19 +178,19 @@ export default function Feed() {
           <>
             {/* AppBar */}
             <View className="py-4">
-              <Text className="font-visby-bold text-2xl text-gray-900 dark:text-white">
-                Feed
-              </Text>
+              <Text className="font-visby-bold text-2xl text-gray-900 dark:text-white">Feed</Text>
             </View>
 
             {/* Welcome Header */}
             {currentUser && (
-              <View className="mb-6 rounded-3xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 p-5">
+              <View className="mb-6 rounded-3xl border border-gray-100 bg-gray-50 p-5 dark:border-gray-800 dark:bg-gray-900">
                 <View className="flex-row items-center">
-                  <View className="h-14 w-14 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden mr-4">
+                  <View className="mr-4 h-14 w-14 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                     <Image
                       source={{
-                        uri: currentUser.avatar || `https://ui-avatars.com/api/?name=${currentUser.fullName}&background=random`,
+                        uri:
+                          currentUser.avatar ||
+                          `https://ui-avatars.com/api/?name=${currentUser.fullName}&background=random`,
                       }}
                       style={{ width: 56, height: 56 }}
                       contentFit="cover"
@@ -222,7 +229,7 @@ export default function Feed() {
             <Text className="mt-4 font-visby-bold text-lg text-gray-900 dark:text-white">
               Belum Ada Post
             </Text>
-            <Text className="mt-2 font-visby text-sm text-gray-500 dark:text-gray-400 text-center">
+            <Text className="mt-2 text-center font-visby text-sm text-gray-500 dark:text-gray-400">
               Jadilah yang pertama membuat post!
             </Text>
           </View>
