@@ -77,7 +77,6 @@ export default function SavedRecipesScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Menu state
-  const [showMenu, setShowMenu] = useState(false);
 
   // Manual Creation State
   const [manualModalVisible, setManualModalVisible] = useState(false);
@@ -131,7 +130,6 @@ export default function SavedRecipesScreen() {
   const toggleSearch = () => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (showMenu) setShowMenu(false);
     if (showSortMenu) setShowSortMenu(false);
 
     if (showSearch) {
@@ -141,22 +139,10 @@ export default function SavedRecipesScreen() {
     setShowSearch(!showSearch);
   };
 
-  const toggleMenu = () => {
-    Haptics.selectionAsync();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (showSearch) {
-      setShowSearch(false);
-      Keyboard.dismiss();
-      setSearchQuery('');
-    }
-    if (showSortMenu) setShowSortMenu(false);
-    setShowMenu(!showMenu);
-  };
-
   const toggleSortMenu = () => {
     Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (showMenu) setShowMenu(false);
+
     if (showSearch) {
       setShowSearch(false);
       Keyboard.dismiss();
@@ -473,17 +459,6 @@ export default function SavedRecipesScreen() {
               color={showSearch ? 'white' : '#8BD65E'}
             />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={toggleMenu}
-            className={`rounded-full border p-2 shadow-sm ${showMenu ? 'border-black bg-black dark:border-white dark:bg-white' : 'border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900'}`}
-          >
-            <Ionicons
-              name={showMenu ? 'close' : 'grid-outline'}
-              size={20}
-              color={showMenu ? (isDark ? 'black' : 'white') : '#8BD65E'}
-            />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -568,43 +543,30 @@ export default function SavedRecipesScreen() {
       )}
 
       {/* Quick Actions */}
-      {showMenu && (
-        <View className="mb-4 flex-row justify-around px-5 pb-2 pt-1">
-          <TouchableOpacity onPress={() => router.push('/meal-planner')} className="items-center">
-            <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-900/20">
-              <Ionicons name="calendar-outline" size={24} color="#F97316" />
-            </View>
-            <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
-              Planner
-            </Text>
-          </TouchableOpacity>
+      <View className="mb-4 flex-row justify-around px-5 pb-2 pt-1">
+        <TouchableOpacity onPress={() => router.push('/meal-planner')} className="items-center">
+          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-900/20">
+            <Ionicons name="calendar-outline" size={24} color="#F97316" />
+          </View>
+          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Planner</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push('/pantry')} className="items-center">
-            <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/20">
-              <Ionicons name="basket-outline" size={24} color="#8BD65E" />
-            </View>
-            <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Pantry</Text>
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/pantry')} className="items-center">
+          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/20">
+            <Ionicons name="basket-outline" size={24} color="#8BD65E" />
+          </View>
+          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Pantry</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleStartManualCreate} className="items-center">
-            <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20">
-              <Ionicons name="create-outline" size={24} color="#EF4444" />
-            </View>
-            <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
-              New Recipe
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => router.push('/shopping-list')} className="items-center">
-            <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-              <Ionicons name="cart-outline" size={24} color="#3B82F6" />
-            </View>
-            <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
-              Shop List
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        <TouchableOpacity onPress={() => router.push('/shopping-list')} className="items-center">
+          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+            <Ionicons name="cart-outline" size={24} color="#3B82F6" />
+          </View>
+          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
+            Shop List
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* SEARCH BAR */}
       {showSearch && (
@@ -729,6 +691,15 @@ export default function SavedRecipesScreen() {
         type="destructive"
         icon="trash-outline"
       />
+
+      {/* Floating Action Button for New Recipe */}
+      <TouchableOpacity
+        onPress={handleStartManualCreate}
+        className="absolute bottom-6 right-6 z-50 h-16 w-16 items-center justify-center rounded-full bg-[#8BD65E] shadow-lg shadow-green-200 dark:shadow-none"
+        style={{ elevation: 5 }}
+      >
+        <Ionicons name="add" size={36} color="white" />
+      </TouchableOpacity>
 
       {/* Toast for error/success notifications */}
       <Toast ref={toastRef} />

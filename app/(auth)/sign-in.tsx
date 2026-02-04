@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger } from 'iconsax-react-native';
+import { Danger, Sms, Lock, Login } from 'iconsax-react-native';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
@@ -53,8 +53,9 @@ export default function SignInPage() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 px-6 pt-10">
         <AuthHeader
-          title="Welcome Back!"
-          subtitle="Enter your details to get back in the kitchen."
+          title="Ready to cook something amazing? Let's get you logged in."
+          subtitle=""
+          titleClassName="font-visby-demibold text-3xl font-medium text-black"
           subtitleClassName="font-visby-medium text-base text-slate-700"
         />
 
@@ -66,14 +67,16 @@ export default function SignInPage() {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            icon={<Sms size={20} color="#8BD65E" variant="Bold" />}
           />
 
           <View className="gap-2">
             <AuthPasswordField
               label="Password"
-              placeholder="••••••••"
+              placeholder="********"
               value={password}
               onChangeText={setPassword}
+              icon={<Lock size={20} color="#8BD65E" variant="Bold" />}
             />
             <AuthFooterLink
               linkText="Forgot Password?"
@@ -89,11 +92,12 @@ export default function SignInPage() {
           containerClassName="mt-6"
           onPress={handleSignIn}
           disabled={loading}
+          icon={!loading && <Login size={20} color="#FFFFFF" variant="Bold" />}
         />
 
         <AuthFooterLink
-          text="Don't have an account? "
-          linkText="Sign up"
+          text="New to ReCook? "
+          linkText="Create an account"
           onPress={() => router.dismissTo('/sign-up')}
           containerClassName="mt-auto flex-row items-center justify-center pb-6"
         />

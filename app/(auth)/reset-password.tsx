@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger, TickCircle } from 'iconsax-react-native';
+import { Danger, TickCircle, PasswordCheck, Lock, Key } from 'iconsax-react-native';
 
 export default function ResetPasswordPage() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -89,9 +89,9 @@ export default function ResetPasswordPage() {
 
         <View className="gap-6">
           <AuthHeader
-            title="Reset Password"
-            subtitle={`Enter the OTP code sent to ${email} and create your new password.`}
-            titleClassName="font-visby text-2xl font-semibold text-black"
+            title={`Enter the verification code sent to ${email} and create your new secure password.`}
+            subtitle=""
+            titleClassName="font-visby-demibold text-3xl font-medium text-black"
             subtitleClassName="font-visby text-sm text-gray-500"
           />
 
@@ -102,28 +102,31 @@ export default function ResetPasswordPage() {
               keyboardType="number-pad"
               maxLength={6}
               labelClassName="font-visby text-sm font-medium text-black"
-              inputWrapperClassName="rounded-xl border border-green-400 px-4 py-3"
+              inputWrapperClassName="rounded-xl border border-black/15 px-4 py-3"
               inputClassName="font-visby text-sm text-black"
               value={otp}
               onChangeText={setOtp}
+              icon={<PasswordCheck size={20} color="#8BD65E" variant="Bold" />}
             />
             <AuthPasswordField
               label="New Password"
-              placeholder="••••••••"
+              placeholder="********"
               labelClassName="font-visby text-sm font-medium text-black"
-              inputWrapperClassName="flex-row items-center justify-between rounded-xl border border-green-400 px-4 py-3"
+              inputWrapperClassName="flex-row items-center justify-between rounded-xl border border-black/15 px-4 py-3"
               inputClassName="font-visby flex-1 text-sm text-black"
               onChangeText={setNewPassword}
               value={newPassword}
+              icon={<Lock size={20} color="#8BD65E" variant="Bold" />}
             />
             <AuthPasswordField
               label="Confirm Password"
-              placeholder="••••••••"
+              placeholder="********"
               labelClassName="font-visby text-sm font-medium text-black"
-              inputWrapperClassName="flex-row items-center justify-between rounded-xl border border-green-400 px-4 py-3"
+              inputWrapperClassName="flex-row items-center justify-between rounded-xl border border-black/15 px-4 py-3"
               inputClassName="font-visby flex-1 text-sm text-black"
               onChangeText={setConfirmPassword}
               value={confirmPassword}
+              icon={<Lock size={20} color="#8BD65E" variant="Bold" />}
             />
           </View>
 
@@ -131,6 +134,7 @@ export default function ResetPasswordPage() {
             title={isLoading ? 'Resetting...' : 'Reset Password'}
             onPress={handleResetPress}
             disabled={isLoading}
+            icon={!isLoading && <Key size={20} color="#FFFFFF" variant="Bold" />}
           />
         </View>
       </View>

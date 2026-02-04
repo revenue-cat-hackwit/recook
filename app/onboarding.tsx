@@ -250,7 +250,7 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header with Back Button */}
-      <View className="flex-row items-center justify-between px-6 pt-8">
+      <View className="flex-row items-center justify-between px-6 pt-16">
         {currentStep > 1 ? (
           <TouchableOpacity onPress={handleBack} className="p-2">
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
@@ -269,10 +269,10 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {/* Next Button */}
-      <View className="px-6 pb-8 pt-8">
+      <View className="border-t border-gray-100 bg-white px-6 pb-20 pt-6">
         <TouchableOpacity
           onPress={handleNext}
-          className="w-full flex-row items-center justify-center rounded-2xl bg-[#8BD65E] py-4 shadow-lg shadow-green-200"
+          className="w-full flex-row items-center justify-center rounded-2xl border border-black/15 bg-[#8BD65E] py-4"
         >
           <Text className="mr-2 font-visby-bold text-lg text-white">
             {currentStep === 4 ? "Let's Cook" : 'Next'}

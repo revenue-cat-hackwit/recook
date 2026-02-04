@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger } from 'iconsax-react-native';
+import { Danger, Profile, User, Sms, Lock, UserAdd } from 'iconsax-react-native';
 
 export default function SignUpPage() {
   const [username, setUsername] = useState('');
@@ -70,8 +70,9 @@ export default function SignUpPage() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 px-6 pt-10">
         <AuthHeader
-          title="Create Account"
-          subtitle="Create an account to start your culinary journey"
+          title="Create your account and start your delicious culinary journey today"
+          subtitle=""
+          titleClassName="font-visby-demibold text-3xl font-medium text-black"
         />
 
         <View className="mt-6 gap-5">
@@ -81,6 +82,7 @@ export default function SignUpPage() {
             autoCapitalize="none"
             value={username}
             onChangeText={setUsername}
+            icon={<Profile size={20} color="#8BD65E" variant="Bold" />}
           />
           <AuthTextField
             label="Full Name"
@@ -88,6 +90,7 @@ export default function SignUpPage() {
             autoCapitalize="words"
             value={fullName}
             onChangeText={setFullName}
+            icon={<User size={20} color="#8BD65E" variant="Bold" />}
           />
           <AuthTextField
             label="Email"
@@ -96,31 +99,35 @@ export default function SignUpPage() {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            icon={<Sms size={20} color="#8BD65E" variant="Bold" />}
           />
           <AuthPasswordField
             label="Password"
-            placeholder="••••••••"
+            placeholder="********"
             value={password}
             onChangeText={setPassword}
+            icon={<Lock size={20} color="#8BD65E" variant="Bold" />}
           />
           <AuthPasswordField
             label="Confirm Password"
-            placeholder="••••••••"
+            placeholder="********"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
+            icon={<Lock size={20} color="#8BD65E" variant="Bold" />}
           />
         </View>
 
         <AuthPrimaryButton
-          title={isLoading ? 'Creating Account...' : 'Sign Up'}
+          title={isLoading ? 'Creating Account...' : 'Create Account'}
           containerClassName="mt-6"
           onPress={handleSignUp}
           disabled={isLoading}
+          icon={!isLoading && <UserAdd size={20} color="#FFFFFF" variant="Bold" />}
         />
 
         <AuthFooterLink
           text="Already have an account? "
-          linkText="Sign in"
+          linkText="Login here"
           onPress={() => router.dismissTo('/sign-in')}
           containerClassName="mt-auto flex-row items-center justify-center pb-6"
         />

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger, TickCircle } from 'iconsax-react-native';
+import { Danger, TickCircle, ShieldTick } from 'iconsax-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '@/lib/store/authStore';
 import AuthHeader from '@/components/auth/AuthHeader';
@@ -127,8 +127,9 @@ export default function VerifyOTPPage() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 px-6 pt-10">
         <AuthHeader
-          title="Verify Your Email"
-          subtitle={`We've sent a 6-digit code to\n${email}`}
+          title={`We've sent a 6-digit verification code to\n${email}`}
+          subtitle=""
+          titleClassName="font-visby-demibold text-3xl font-medium text-black text-center"
           subtitleClassName="font-visby-medium text-base text-slate-700 text-center"
         />
 
@@ -157,6 +158,7 @@ export default function VerifyOTPPage() {
           containerClassName="mt-8"
           onPress={() => handleVerify()}
           disabled={loading || otp.join('').length !== 6}
+          icon={!loading && <ShieldTick size={20} color="#FFFFFF" variant="Bold" />}
         />
 
         {/* Resend OTP */}
@@ -172,7 +174,7 @@ export default function VerifyOTPPage() {
                 resendCountdown > 0 ? 'text-gray-400' : 'text-primary'
               }`}
             >
-              {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend OTP'}
+              {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend Code'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -180,7 +182,7 @@ export default function VerifyOTPPage() {
         {/* Back to Sign In */}
         <TouchableOpacity onPress={() => router.back()} className="mt-auto items-center pb-6">
           <Text className="font-visby text-sm text-gray-500">
-            Wrong email? <Text className="font-visby-medium text-primary">Go back</Text>
+            Wrong email? <Text className="font-visby-medium text-primary">Change it</Text>
           </Text>
         </TouchableOpacity>
       </View>

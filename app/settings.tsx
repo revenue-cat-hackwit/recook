@@ -141,8 +141,17 @@ export default function SettingsScreen() {
   };
 
   const confirmSignOut = async () => {
-    await useAuthStore.getState().signOut();
-    router.replace('/');
+    try {
+      await useAuthStore.getState().signOut();
+      setSignOutAlertVisible(false);
+      router.replace('/(auth)/sign-in');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showAlert('Error', 'Failed to sign out. Please try again.', undefined, {
+        icon: <Danger size={32} color="#EF4444" variant="Bold" />,
+        type: 'destructive',
+      });
+    }
   };
 
   const handleClearChatHistory = () => {
@@ -195,12 +204,12 @@ export default function SettingsScreen() {
         <PersonalizationSection />
 
         {/* Section: App Settings */}
-        <View className="mb-8">
+        {/* <View className="mb-8">
           <Text className="mb-4 font-visby-bold text-lg text-gray-900 dark:text-gray-100">
             App Preferences
           </Text>
           <ThemeSelector />
-        </View>
+        </View> */}
 
         {/* Section: Account */}
         <View className="mb-8">
@@ -209,7 +218,7 @@ export default function SettingsScreen() {
           </Text>
 
           {/* Clear Chat History */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={handleClearChatHistory}
             className="mb-3 flex-row items-center justify-between rounded-2xl border border-orange-100 bg-orange-50 p-4 dark:border-orange-900/50 dark:bg-orange-900/20"
           >
@@ -220,7 +229,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#F97316" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             onPress={handleSignOut}
@@ -228,7 +237,7 @@ export default function SettingsScreen() {
           >
             <View className="flex-row items-center gap-3">
               <Ionicons name="log-out-outline" size={24} color="#EF4444" />
-              <Text className="font-visby-bold text-base text-red-500">Sign Out</Text>
+              <Text className="font-visby-bold text-base text-red-500">Logout</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#EF4444" />
           </TouchableOpacity>

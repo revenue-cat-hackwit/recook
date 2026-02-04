@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger } from 'iconsax-react-native';
+import { Danger, Sms, Send2 } from 'iconsax-react-native';
 
 export default function ForgotPasswordPage() {
   const [isSent, setIsSent] = useState(false);
@@ -59,9 +59,9 @@ export default function ForgotPasswordPage() {
 
         <View className="gap-6">
           <AuthHeader
-            title="Forgot Password"
-            subtitle="Enter your email address and we'll send you an OTP code to reset your password."
-            titleClassName="font-visby text-2xl font-semibold text-black"
+            title="No worries! Enter your email and we'll send you a verification code to reset it."
+            subtitle=""
+            titleClassName="font-visby-demibold text-3xl font-medium text-black"
             subtitleClassName="font-visby text-sm text-gray-500"
           />
 
@@ -71,16 +71,18 @@ export default function ForgotPasswordPage() {
             keyboardType="email-address"
             autoCapitalize="none"
             labelClassName="font-visby text-sm font-medium text-black"
-            inputWrapperClassName="rounded-xl border border-green-400 px-4 py-3"
+            inputWrapperClassName="rounded-xl border border-black/15 px-4 py-3"
             inputClassName="font-visby text-sm text-black"
             value={email}
             onChangeText={setEmail}
+            icon={<Sms size={20} color="#8BD65E" variant="Bold" />}
           />
 
           <AuthPrimaryButton
             title={isLoading ? 'Sending...' : 'Send OTP'}
             onPress={handleSendPress}
             disabled={isLoading}
+            icon={!isLoading && <Send2 size={20} color="#FFFFFF" variant="Bold" />}
           />
         </View>
       </View>

@@ -44,8 +44,7 @@ export default function OnBoardingCarousel() {
       return (
         <View className="items-center justify-start px-12" style={{ width, flex: 1 }}>
           <Image source={item.imageSource} className="h-80 w-80" resizeMode="cover" />
-          <Text className="font-visby-demibold text-xl font-semibold text-black">{item.title}</Text>
-          <Text className="mt-3 text-center font-visby-medium text-sm font-medium text-gray-500">
+          <Text className="mt-8 text-center font-visby-medium text-sm font-medium text-gray-500">
             {item.description}
           </Text>
         </View>
@@ -65,7 +64,7 @@ export default function OnBoardingCarousel() {
   );
 
   return (
-    <View className="items-center justify-center p-24">
+    <View className="items-center justify-center">
       {/* Onboarding Carousel */}
       <Carousel
         width={width}
@@ -81,15 +80,16 @@ export default function OnBoardingCarousel() {
       />
 
       {/* Dot Indicators */}
-      <View className="flex-row items-center justify-center gap-2">
+      <View className="w-full flex-row items-center justify-between px-12">
         {APP_INTRO_DATA.map((_, index) => (
           <View
             key={`dot-${index}`}
             className={
               index === activeIndex
-                ? 'h-3 w-3 rounded-full bg-primary'
-                : 'h-3 w-3 rounded-full bg-gray-300'
+                ? 'h-1 flex-1 rounded-full bg-primary'
+                : 'h-1 flex-1 rounded-full bg-gray-300'
             }
+            style={{ marginHorizontal: 4 }}
           />
         ))}
       </View>
