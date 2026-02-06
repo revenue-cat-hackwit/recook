@@ -1,4 +1,5 @@
 import { AuthError } from '@supabase/supabase-js';
+import { AuthApiService } from './authApiService';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../supabase';
 import { decode } from 'base64-arraybuffer';
@@ -38,22 +39,29 @@ export const UserService = {
 
       avatar_url = data.publicUrl;
     }
-    const updates: { [key: string]: string } = {};
 
-    if (username) updates.username = username;
-    if (avatar_url) updates.avatar_url = avatar_url;
-    if (bio) updates.bio = bio;
-
-    const { error: updateError } = await supabase.from('profiles').update(updates).eq('id', userId);
-
-    if (updateError) throw updateError;
-
-    const { error } = await supabase.auth.updateUser({
-      data: updates,
+    // Update profile via Backend API
+    const response = await AuthApiService.updateProfile({
+      fullName: username,
+      bio: bio,
+      avatar: avatar_url,
     });
 
-    if (error) {
-      throw error;
+    // Update local AuthStore to reflect changes globally
+    if (response.success && response.data.user) {
+        const currentToken = useAuthStore.getState().token;
+        const currentUser = useAuthStore.getState().user;
+        
+        if (currentToken && currentUser) {
+            // Merge existing auth user with updated profile fields
+            useAuthStore.getState().setCredentials(currentToken, {
+                ...currentUser,
+                username: response.data.user.username,
+                fullName: response.data.user.fullName,
+                avatar: response.data.user.avatar,
+                bio: response.data.user.bio,
+            } as any); 
+        }
     }
   },
 };

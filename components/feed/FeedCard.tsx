@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View as RNView, Text as RNText, TouchableOpacity as RNTouchableOpacity, GestureResponderEvent } from 'react-native';
+
+const View = RNView as any;
+const Text = RNText as any;
+const TouchableOpacity = RNTouchableOpacity as any;
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { FeedPost } from '@/lib/services/communityService';
+import { Post } from '@/lib/types/post';
 import { useColorScheme } from 'nativewind';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -10,7 +14,7 @@ const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500&auto=format&fit=crop';
 
 interface FeedCardProps {
-  item: FeedPost;
+  item: Post;
   isLiked?: boolean;
   onLike: () => void;
   onPress: () => void;
@@ -18,14 +22,14 @@ interface FeedCardProps {
 
 export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLike, onPress }) => {
   const [liked, setLiked] = useState(isLiked);
-  const [likes, setLikes] = useState(item.likes_count);
+  const [likes, setLikes] = useState(item.likesCount);
   const [isImageLoading, setIsImageLoading] = useState(true);
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   useEffect(() => {
-    setLikes(item.likes_count);
-  }, [item.likes_count]);
+    setLikes(item.likesCount);
+  }, [item.likesCount]);
 
   useEffect(() => {
     setLiked(isLiked);
@@ -38,8 +42,8 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
   };
 
   const hasValidImage =
-    item.image_url && item.image_url.length > 10 && !item.image_url.includes('via.placeholder.com');
-  const displayImage = hasValidImage ? item.image_url : FALLBACK_IMAGE;
+    item.imageUrl && item.imageUrl.length > 10 && !item.imageUrl.includes('via.placeholder.com');
+  const displayImage = hasValidImage ? item.imageUrl : FALLBACK_IMAGE;
 
   return (
     <TouchableOpacity
@@ -52,7 +56,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
         className="relative overflow-hidden rounded-t-2xl bg-gray-100 dark:bg-gray-800"
       >
         <Image
-          source={{ uri: displayImage }}
+          source={{ uri: displayImage || undefined }}
           style={{ flex: 1, width: '100%', height: '100%' }}
           contentFit="cover"
           transition={500}
@@ -68,7 +72,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
           </View>
         )}
         <TouchableOpacity
-          onPress={(e) => {
+          onPress={(e: GestureResponderEvent) => {
             e.stopPropagation();
             handlePressLike();
           }}
@@ -86,7 +90,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
           className="mb-2 font-visby-bold text-sm leading-tight text-gray-900 dark:text-gray-100"
           numberOfLines={2}
         >
-          {item.title}
+          {item.content}
         </Text>
         <View className="flex-row items-center justify-between">
           <View className="flex-1 flex-row items-center">
@@ -94,7 +98,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
               <Image
                 source={{
                   uri:
-                    item.user.avatar_url ||
+                    item.user.avatar ||
                     'https://ui-avatars.com/api/?name=Chef&background=random',
                 }}
                 style={{ width: 20, height: 20 }}
@@ -104,7 +108,7 @@ export const FeedCard: React.FC<FeedCardProps> = ({ item, isLiked = false, onLik
               className="ml-2 truncate font-visby text-xs text-gray-500 dark:text-gray-400"
               numberOfLines={1}
             >
-              {item.user.full_name?.split(' ')[0] || 'Chef'}
+              {item.user.fullName?.split(' ')[0] || 'Chef'}
             </Text>
           </View>
           <View className="ml-2 flex-row items-center">

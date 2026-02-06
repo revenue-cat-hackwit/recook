@@ -7,9 +7,10 @@ import AuthTextField from '@/components/auth/AuthTextField';
 import { useAuthStore } from '@/lib/store/authStore';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
+import { LoadingModal } from '@/components/LoadingModal';
 import { Danger, Profile, User, Sms, Lock, UserAdd, Google } from 'iconsax-react-native';
 
 export default function SignUpPage() {
@@ -69,8 +70,11 @@ export default function SignUpPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isLoading) return;
+
     console.log('🟢 [Sign-Up Screen] User initiated Google Sign-In');
     try {
+      setIsLoading(true);
       console.log('🟢 [Sign-Up Screen] Calling signInWithGoogle...');
       await signInWithGoogle();
       console.log('✅ [Sign-Up Screen] Google Sign-In successful, navigating...');
@@ -81,12 +85,18 @@ export default function SignUpPage() {
         error: err,
       });
       setErrorMessage(err.message || 'Google Sign-In failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6 pt-10">
+      <ScrollView 
+        className="flex-1" 
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
         <AuthHeader
           title="Create your account and start your delicious culinary journey today"
           subtitle=""
@@ -153,6 +163,7 @@ export default function SignUpPage() {
           title="Sign up with Google"
           icon={<Google size={20} color="#000000" variant="Bold" />}
           onPress={handleGoogleSignIn}
+          disabled={isLoading}
           containerClassName="mt-4"
         />
 
@@ -160,9 +171,15 @@ export default function SignUpPage() {
           text="Already have an account? "
           linkText="Login here"
           onPress={() => router.dismissTo('/sign-in')}
-          containerClassName="mt-auto flex-row items-center justify-center pb-6"
+          containerClassName="mt-auto flex-row items-center justify-center pb-6 pt-6"
         />
-      </View>
+      </ScrollView>
+
+      <LoadingModal 
+        visible={isLoading} 
+        message="Creating account..." 
+        subMessage="Please wait a moment"
+      />
     </SafeAreaView>
   );
 }

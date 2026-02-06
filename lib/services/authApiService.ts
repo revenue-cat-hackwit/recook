@@ -1,5 +1,6 @@
 import apiClient, { TokenStorage } from './apiClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { UserSyncService } from './userSyncService';
 import {
     CreateAccountRequest,
     CreateAccountResponse,
@@ -15,6 +16,12 @@ import {
     ResetPasswordResponse,
     GoogleSignInRequest,
     GoogleSignInResponse,
+    ProfileResponse,
+    UpdateProfileRequest,
+    UpdateProfileResponse,
+    PersonalizationResponse,
+    UpdatePersonalizationRequest,
+    UpdatePersonalizationResponse,
 } from '@/lib/types/auth';
 
 export const AuthApiService = {
@@ -54,6 +61,8 @@ export const AuthApiService = {
             if (response.data.data.user?.id) {
                 await AsyncStorage.setItem('pirinku_user_id', response.data.data.user.id);
             }
+            // Sync custom_user_id to Supabase
+            await UserSyncService.syncCustomUserId();
         }
 
         return response.data;
@@ -76,6 +85,8 @@ export const AuthApiService = {
             if (response.data.data.user?.id) {
                 await AsyncStorage.setItem('pirinku_user_id', response.data.data.user.id);
             }
+            // Sync custom_user_id to Supabase
+            await UserSyncService.syncCustomUserId();
         }
 
         return response.data;
@@ -172,8 +183,61 @@ export const AuthApiService = {
                 await AsyncStorage.setItem('pirinku_user_id', response.data.data.user.id);
                 console.log('✅ [AuthApiService] User ID saved to storage');
             }
+            // Sync custom_user_id to Supabase
+            await UserSyncService.syncCustomUserId();
         }
 
         return response.data;
     },
+
+    /**
+     * Get User Profile (Basic Info)
+     * GET /api/profile
+     */
+    async getProfile(): Promise<ProfileResponse> {
+        const response = await apiClient.get<ProfileResponse>('/api/profile');
+        return response.data;
+    },
+
+    /**
+     * Update User Profile
+     * PATCH /api/profile
+     */
+    async updateProfile(data: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+        const response = await apiClient.patch<UpdateProfileResponse>('/api/profile', data);
+        return response.data;
+    },
+
+    /**
+     * Get User Personalization (Allergies, Preferences)
+     * GET /api/personalization
+     */
+    async getPersonalization(): Promise<PersonalizationResponse | null> {
+        try {
+            const response = await apiClient.get<PersonalizationResponse>('/api/personalization');
+            return response.data;
+        } catch (error) {
+            console.log('No personalization found or error:', error);
+            return null;
+        }
+    },
+
+    /**
+     * Create User Personalization
+     * POST /api/personalization
+     */
+    async createPersonalization(data: UpdatePersonalizationRequest): Promise<UpdatePersonalizationResponse> {
+        const response = await apiClient.post<UpdatePersonalizationResponse>('/api/personalization', data);
+        return response.data;
+    },
+
+    /**
+     * Update User Personalization
+     * PATCH /api/personalization
+     */
+    async updatePersonalization(data: UpdatePersonalizationRequest): Promise<UpdatePersonalizationResponse> {
+        const response = await apiClient.patch<UpdatePersonalizationResponse>('/api/personalization', data);
+        return response.data;
+    },
 };
+

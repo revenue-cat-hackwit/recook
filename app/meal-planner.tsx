@@ -27,9 +27,10 @@ import { PantryService, PantryItem } from '@/lib/services/pantryService';
 import * as Haptics from 'expo-haptics';
 import { CustomAlertModal } from '@/components/CustomAlertModal';
 import Toast, { ToastRef } from '@/components/Toast';
-import { ChefLoading } from '@/components/ChefLoading';
+import { LoadingModal } from '@/components/LoadingModal';
 import { TickCircle, Danger, Trash, ShoppingCart, MagicStar } from 'iconsax-react-native';
 import Animated, { ZoomIn, ZoomOut, Easing } from 'react-native-reanimated';
+import { AuthApiService } from '@/lib/services/authApiService';
 
 // Format Date Utils
 const getDayName = (date: Date) => {
@@ -75,6 +76,7 @@ function MealPlannerContent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [targetMealType, setTargetMealType] = useState('lunch');
   const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
+  const [rawPersonalization, setRawPersonalization] = useState<any>(null); // Store full personalization data
 
   // Recipe Detail Modal State
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -272,9 +274,10 @@ function MealPlannerContent() {
   const [generationMode, setGenerationMode] = useState<'replace' | 'fill'>('replace');
   const [showGenerationModeModal, setShowGenerationModeModal] = useState(false);
   const [existingMealsCount, setExistingMealsCount] = useState(0);
+  const [userPreferences, setUserPreferences] = useState<Partial<AutoPlanPreferences>>({});
 
-  const handleGeneratePlan = () => {
-    // Check if there are any existing meals in the next 7 days
+  const handleGeneratePlan = async () => {
+    // Check for existing meals
     const today = new Date();
     const next7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
@@ -283,6 +286,28 @@ function MealPlannerContent() {
     });
 
     const existingMeals = mealPlans.filter((plan) => next7Days.includes(plan.date));
+
+    // Try to pre-fetch user preferences (Allergies specifically)
+    try {
+        const personalizationRes = await AuthApiService.getPersonalization();
+        
+        // Check if personalization exists and has data based on backend response shape
+        const personalization = personalizationRes?.data?.personalization; // Based on route.ts response structure
+
+        if (personalization) {
+            setRawPersonalization(personalization);
+            setUserPreferences({
+                // Backend 'foodAllergies' is string[]
+                allergies: personalization.foodAllergies && Array.isArray(personalization.foodAllergies) 
+                  ? personalization.foodAllergies.join(', ') 
+                  : '',
+                // Backend currently doesn't store dietGoal, dietType, or calories. 
+                // Leaving them undefined means modal will use its internal defaults.
+            });
+        }
+    } catch (err) {
+        console.log("Failed to fetch preferences, using defaults", err);
+    }
 
     if (existingMeals.length > 0) {
       // Show custom modal with options
@@ -298,7 +323,17 @@ function MealPlannerContent() {
   const handleConfirmPlan = async (prefs: any) => {
     setLoading(true);
     try {
-      await MealPlannerService.generateWeeklyPlan(formatDate(new Date()), prefs, generationMode);
+      // Merge with raw personalization data if available
+      const finalPrefs = {
+        ...prefs,
+        foodAllergies: rawPersonalization?.foodAllergies || [],
+        favoriteCuisines: rawPersonalization?.favoriteCuisines || [],
+        whatsInYourKitchen: rawPersonalization?.whatsInYourKitchen || [],
+        otherTools: rawPersonalization?.otherTools || [],
+        tastePreferences: rawPersonalization?.tastePreferences || [],
+      };
+
+      await MealPlannerService.generateWeeklyPlan(formatDate(new Date()), finalPrefs, generationMode);
       showAlert({
         title: 'Success',
         message: 'Weekly meal plan created!',
@@ -853,7 +888,7 @@ function MealPlannerContent() {
   return (
     <>
       {/* Loading Overlay */}
-      {generatorLoading && <ChefLoading status={loadingMessage} />}
+      <LoadingModal visible={generatorLoading} message="Generating Meal Plan..." subMessage={loadingMessage} />
 
       <RecipeDetailModal
         recipe={selectedRecipe}
@@ -1142,6 +1177,7 @@ function MealPlannerContent() {
           onClose={() => setIsAutoPlanModalOpen(false)}
           onSubmit={handleConfirmPlan}
           isLoading={loading}
+          initialPreferences={userPreferences}
         />
 
         {/* Generation Mode Selection Modal */}

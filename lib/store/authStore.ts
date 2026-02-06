@@ -138,7 +138,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
    * Sign out - Clear token and user data
    */
   signOut: async () => {
-    await AuthApiService.logout();
+    try {
+      await AuthService.signOut(); // Clear Supabase session
+    } catch (e) {
+      console.warn('Supabase logout failed', e);
+    }
+    await AuthApiService.logout(); // Clear Backend token
 
     // Clear persisted caches
     const RECIPES_STORAGE_KEY = 'pirinku_local_recipes_v1';

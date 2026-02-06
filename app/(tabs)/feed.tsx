@@ -221,7 +221,7 @@ export default function Feed() {
                   >
                     <Setting2 size={20} color="#666" variant="Outline" />
                   </TouchableOpacity>
-                  <ProButton />
+                  {/* <ProButton /> */}
                 </View>
               </View>
             </SafeAreaView>

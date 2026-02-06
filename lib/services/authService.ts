@@ -67,7 +67,7 @@ export const AuthService = {
         name: userInfo?.data?.user?.name,
       });
 
-      if (isSuccessResponse(userInfo)) {
+        if (isSuccessResponse(userInfo)) {
         console.log('🔵 [Google Sign-In] Signing in to Supabase with Google ID token...');
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'google',
@@ -130,6 +130,10 @@ export const AuthService = {
         message: error?.message,
       });
       
+      if (error.name === 'AuthApiError' || error.message?.includes('Database error')) {
+        throw error;
+      }
+
       if (isErrorWithCode(error)) {
         console.error('❌ [Google Sign-In] Error code:', error.code);
         switch (error.code) {

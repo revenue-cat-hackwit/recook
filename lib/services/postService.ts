@@ -18,22 +18,28 @@ const getCurrentUserId = async (): Promise<string | null> => {
 const transformPost = async (rawPost: RawPost): Promise<Post> => {
     const currentUserId = await getCurrentUserId();
     
+    // Handle missing user data
+    if (!rawPost.userId) {
+        throw new Error(`Post ${rawPost._id} is missing user data`);
+    }
+
     return {
         id: rawPost._id,
         content: rawPost.content,
         imageUrl: rawPost.imageUrl || null,
         user: {
-            id: rawPost.user._id,
-            username: rawPost.user.username,
-            fullName: rawPost.user.fullName,
-            avatar: rawPost.user.avatar || null,
+            id: rawPost.userId._id,
+            username: rawPost.userId.username,
+            fullName: rawPost.userId.fullName,
+            avatar: rawPost.userId.avatar || null,
         },
-        likesCount: rawPost.likesCount,
-        commentsCount: rawPost.commentsCount,
+        likesCount: rawPost.likes?.length || 0,
+        commentsCount: rawPost.comments?.length || 0,
         isLiked: currentUserId ? rawPost.likes.includes(currentUserId) : false,
         createdAt: rawPost.createdAt,
         updatedAt: rawPost.updatedAt,
         comments: rawPost.comments?.map(comment => ({
+            id: comment._id,
             userId: {
                 id: comment.userId._id,
                 username: comment.userId.username,
@@ -88,11 +94,22 @@ export const PostService = {
      * GET /api/posts/{id}
      * Requires Authorization header with Bearer token
      */
-    async getPostDetail(postId: string): Promise<{ success: boolean; data: { post: any } }> {
-        const response = await apiClient.get<{ success: boolean; data: { post: any } }>(
+    async getPostDetail(postId: string): Promise<{ success: boolean; data: { post: Post } }> {
+        const response = await apiClient.get<{ success: boolean; data: { post: RawPost } }>(
             `/api/posts/${postId}`
         );
-        return response.data;
+        
+        let transformedPost: Post | null = null;
+        if (response.data.success && response.data.data.post) {
+            transformedPost = await transformPost(response.data.data.post);
+        }
+
+        return {
+            success: response.data.success,
+            data: {
+                post: transformedPost as Post
+            }
+        };
     },
 
     /**
@@ -156,4 +173,23 @@ export const PostService = {
         );
         return response.data;
     },
+
+    /**
+     * Publish a recipe as a post
+     * POST /api/posts
+     */
+    async publishRecipe(recipe: any): Promise<{ success: boolean; message: string; data?: any }> {
+        const body = { 
+            title: recipe.title,
+            recipeSnapshot: recipe,
+            imageUrl: recipe.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600',
+            content: recipe.description || '' 
+        };
+        
+        const response = await apiClient.post<{ success: boolean; message: string; data?: any }>(
+            '/api/posts',
+            body
+        );
+        return response.data;
+    }
 };

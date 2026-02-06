@@ -1,6 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Recipe } from '@/lib/types';
 import { TokenStorage } from './apiClient';
+import { decodeJwt } from '@/lib/utils/jwt';
 
 export interface MealPlan {
   id: string;
@@ -106,46 +107,50 @@ export const MealPlannerService = {
    */
   async generateWeeklyPlan(
     startDate: string,
-    preferences?: { goal?: string; dietType?: string; allergies?: string; calories?: string },
+    preferences?: { 
+      goal?: string; 
+      dietType?: string; 
+      allergies?: string; 
+      calories?: string;
+      foodAllergies?: string[];
+      favoriteCuisines?: string[];
+      whatsInYourKitchen?: string[];
+      otherTools?: string[];
+      tastePreferences?: string[];
+    },
     generationMode?: 'replace' | 'fill',
   ): Promise<void> {
     console.log('[MealPlanner] 🔍 Checking authentication...');
     
-    // Try to get Supabase session first
-    const { data: sessionData } = await supabase.auth.getSession();
-    let token = sessionData.session?.access_token;
-    let userId = sessionData.session?.user?.id;
+    let token: string | null = null;
+    let userId: string | null = null;
     
-    if (!token) {
-      console.log('[MealPlanner] ⚠️ No Supabase session, using custom JWT as fallback...');
+    // PRIORITY 1: Try Custom JWT first (from backend API)
+    const customToken = await TokenStorage.getToken();
+    if (customToken) {
+      console.log('[MealPlanner] 🔑 Found custom JWT, decoding...');
       
-      // Fallback to custom JWT
-      const customToken = await TokenStorage.getToken();
-      if (!customToken) {
-        throw new Error('Not authenticated. Please sign in again.');
-      }
-      
-      // Decode custom JWT to get user ID
       try {
-        const base64Url = customToken.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        const decoded = JSON.parse(jsonPayload);
+        const decoded = decodeJwt(customToken);
         userId = decoded.userId;
         token = customToken;
         
         console.log('[MealPlanner] ✅ Using custom JWT for user:', userId);
       } catch (error) {
         console.error('[MealPlanner] ❌ Failed to decode custom JWT:', error);
-        throw new Error('Invalid authentication token');
       }
-    } else {
-      console.log('[MealPlanner] ✅ Using Supabase session for user:', userId);
+    }
+    
+    // PRIORITY 2: Fallback to Supabase session (shouldn't happen in production)
+    if (!token) {
+      console.log('[MealPlanner] ⚠️ No custom JWT, trying Supabase session...');
+      const { data: sessionData } = await supabase.auth.getSession();
+      token = sessionData.session?.access_token || null;
+      userId = sessionData.session?.user?.id || null;
+      
+      if (token) {
+        console.log('[MealPlanner] ✅ Using Supabase session for user:', userId);
+      }
     }
 
     if (!token || !userId) {
@@ -154,11 +159,9 @@ export const MealPlannerService = {
 
     console.log('[MealPlanner] Generating plan for:', startDate);
 
-    // Use direct fetch for better reliability/debugging
     const baseUrl = supabaseUrl.replace(/\/$/, '');
     const functionUrl = `${baseUrl}/functions/v1/generate-weekly-plan`;
 
-    console.log('[MealPlanner] Fetching:', functionUrl);
     console.log('[MealPlanner] Token type:', token.startsWith('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9') ? 'Custom JWT' : 'Supabase JWT');
 
     try {
@@ -166,15 +169,14 @@ export const MealPlannerService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          'X-Custom-Auth': token,
           apikey: supabaseAnonKey,
-          'x-user-id': userId, // Pass user ID explicitly for custom JWT
         },
         body: JSON.stringify({
           startDate,
           customPreferences: preferences,
           generationMode: generationMode || 'replace',
-          userId, // Also include in body
         }),
       });
 
@@ -185,28 +187,13 @@ export const MealPlannerService = {
           statusText: response.statusText,
           body: text.substring(0, 500),
         });
-        let errMsg = text;
-        try {
-          const json = JSON.parse(text);
-          errMsg = json.message || json.error || text;
-        } catch {}
-        throw new Error(`Server Error: ${errMsg}`);
+        throw new Error(`Server Error: ${text}`);
       }
 
       const data = await response.json();
       console.log('[MealPlanner] ✅ Success:', data);
-      if (!data.success) throw new Error(data.error || 'Failed to generate plan');
     } catch (error: any) {
       console.error('[MealPlanner] ❌ Exception:', error);
-      // Handle network errors specifically
-      if (
-        error.message?.includes('Failed to fetch') ||
-        error.message?.includes('Network request failed') ||
-        error.message?.includes('timeout')
-      ) {
-        throw new Error('No internet connection. Please check your network and try again.');
-      }
-      // Re-throw other errors
       throw error;
     }
   },

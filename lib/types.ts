@@ -97,9 +97,9 @@ export interface ShoppingItem {
 }
 
 export interface UserPreferences {
-  cuisines: string[];
+  favoriteCuisines: string[];
   tastePreferences: string[];
-  allergies: string[];
-  equipment: string[];
-  dietGoal: string;
+  foodAllergies: string[];
+  whatsInYourKitchen: string[];
+  otherTools: string[];
 }

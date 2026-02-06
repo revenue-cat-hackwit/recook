@@ -9,6 +9,7 @@ export interface RawPostUser {
 }
 
 export interface RawPostComment {
+    _id?: string;
     userId: RawPostUser;
     content: string;
     createdAt: string;
@@ -24,9 +25,8 @@ export interface RawPost {
     createdAt: string;
     updatedAt: string;
     __v: number;
-    user: RawPostUser;
-    likesCount: number;
-    commentsCount: number;
+    likesCount?: number;
+    commentsCount?: number;
 }
 
 export interface RawPostsResponse {
@@ -51,6 +51,7 @@ export interface PostUser {
 }
 
 export interface PostComment {
+    id?: string;
     userId: PostUser;
     content: string;
     createdAt: string;

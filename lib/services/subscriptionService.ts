@@ -1,6 +1,4 @@
-import { TokenStorage } from './apiClient';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || 'https://your-api-url.com';
+import apiClient, { TokenStorage, API_BASE_URL } from './apiClient';
 
 export interface UserPlanResponse {
   success: boolean;

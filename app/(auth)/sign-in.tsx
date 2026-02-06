@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showAlert } from '@/lib/utils/globalAlert';
+import { LoadingModal } from '@/components/LoadingModal';
 import { Danger, Sms, Lock, Login, Google } from 'iconsax-react-native';
 
 export default function SignInPage() {
@@ -52,8 +53,11 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (loading) return;
+    
     console.log('🟢 [Sign-In Screen] User initiated Google Sign-In');
     try {
+      setLoading(true);
       console.log('🟢 [Sign-In Screen] Calling signInWithGoogle...');
       await signInWithGoogle();
       console.log('✅ [Sign-In Screen] Google Sign-In successful, navigating...');
@@ -64,6 +68,8 @@ export default function SignInPage() {
         error: err,
       });
       setErrorMessage(err.message || 'Google Sign-In failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,6 +129,7 @@ export default function SignInPage() {
           title="Sign in with Google"
           icon={<Google size={20} color="#000000" variant="Bold" />}
           onPress={handleGoogleSignIn}
+          disabled={loading}
           containerClassName="mt-4"
         />
 
@@ -133,6 +140,12 @@ export default function SignInPage() {
           containerClassName="mt-auto flex-row items-center justify-center pb-6"
         />
       </View>
+
+      <LoadingModal 
+        visible={loading} 
+        message="Signing in..." 
+        subMessage="Connecting to your account"
+      />
     </SafeAreaView>
   );
 }

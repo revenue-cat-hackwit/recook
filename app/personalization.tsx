@@ -180,10 +180,10 @@ export default function PersonalizationScreen() {
 
       // Prepare data for API
       const personalizationData = {
-        favoriteCuisines: preferences.cuisines,
+        favoriteCuisines: preferences.favoriteCuisines,
         tastePreferences: preferences.tastePreferences,
-        foodAllergies: preferences.allergies,
-        whatsInYourKitchen: preferences.equipment,
+        foodAllergies: preferences.foodAllergies,
+        whatsInYourKitchen: preferences.whatsInYourKitchen,
         otherTools: otherTools.split(',').map(tool => tool.trim()).filter(tool => tool.length > 0),
       };
 
@@ -255,7 +255,7 @@ export default function PersonalizationScreen() {
                   key={item.name}
                   label={item.name}
                   imagePath={item.image_path || undefined}
-                  isSelected={preferences.cuisines?.includes(item.name) ?? false}
+                  isSelected={preferences.favoriteCuisines?.includes(item.name) ?? false}
                   onPress={() => toggleCuisine(item.name)}
                   showBorder={true}
                 />
@@ -310,7 +310,7 @@ export default function PersonalizationScreen() {
                   key={item.name}
                   label={item.name}
                   imagePath={item.image_path || undefined}
-                  isSelected={preferences.allergies?.includes(item.name) ?? false}
+                  isSelected={preferences.foodAllergies?.includes(item.name) ?? false}
                   onPress={() => toggleAllergy(item.name)}
                 />
               ))}
@@ -337,7 +337,7 @@ export default function PersonalizationScreen() {
                   key={item.name}
                   label={item.name}
                   imagePath={item.image_path || undefined}
-                  isSelected={preferences.equipment?.includes(item.name) ?? false}
+                  isSelected={preferences.whatsInYourKitchen?.includes(item.name) ?? false}
                   onPress={() => toggleEquipment(item.name)}
                 />
               ))}

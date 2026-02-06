@@ -120,13 +120,47 @@ export interface ProfileUser {
     createdAt: string;
     updatedAt: string;
     bio?: string;
-    avatar?: string; // Changed from avatarUrl to match backend
+    avatar?: string;
 }
 
 export interface UpdateProfileRequest {
     fullName?: string;
     bio?: string;
     avatar?: string;
+}
+
+export interface Personalization {
+    id: string;
+    userId: string;
+    favoriteCuisines?: string[];
+    tastePreferences?: string[];
+    foodAllergies?: string[];
+    whatsInYourKitchen?: string[];
+    otherTools?: string[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PersonalizationResponse {
+    success: boolean;
+    data: {
+        personalization: Personalization;
+    };
+}
+
+export interface UpdatePersonalizationRequest {
+    favoriteCuisines?: string[];
+    tastePreferences?: string[];
+    foodAllergies?: string[];
+    whatsInYourKitchen?: string[];
+    otherTools?: string[];
+}
+
+export interface UpdatePersonalizationResponse {
+    success: boolean;
+    message: string;
+    data: {
+    };
 }
 
 export interface UpdateProfileResponse {

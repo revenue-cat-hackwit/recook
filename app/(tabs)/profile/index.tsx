@@ -299,7 +299,14 @@ export default function Profile() {
 
           {/* Profile Info */}
           <View className="mb-6 items-center">
-            {profileData?.avatar ? (
+            {loading ? (
+              <View
+                className="mb-3 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700"
+                style={{ width: 100, height: 100 }}
+              >
+                <ActivityIndicator size="large" color="#8BD65E" />
+              </View>
+            ) : profileData?.avatar ? (
               <Image
                 source={{ uri: profileData.avatar }}
                 style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 12 }}
@@ -316,10 +323,10 @@ export default function Profile() {
               </View>
             )}
             <Text className="mb-1 font-visby-bold text-xl text-black dark:text-white">
-              {profileData?.fullName || profileData?.username || 'User'}
+              {profileData?.fullName || profileData?.username || (loading ? 'Loading...' : 'User')}
             </Text>
             <Text className="font-visby text-sm text-gray-500 dark:text-gray-400">
-              @{profileData?.username || 'username'}
+              @{profileData?.username || (loading ? '...' : 'username')}
             </Text>
           </View>
 

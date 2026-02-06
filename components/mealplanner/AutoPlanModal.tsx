@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ interface AutoPlanModalProps {
   onClose: () => void;
   onSubmit: (preferences: AutoPlanPreferences) => void;
   isLoading: boolean;
+  initialPreferences?: Partial<AutoPlanPreferences>;
 }
 
 export interface AutoPlanPreferences {
@@ -30,6 +31,7 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
   onClose,
   onSubmit,
   isLoading,
+  initialPreferences,
 }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -38,6 +40,16 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
   const [dietType, setDietType] = useState('No Restrictions');
   const [allergies, setAllergies] = useState('');
   const [calories, setCalories] = useState('2000');
+
+  // Update state when initialPreferences changes
+  useEffect(() => {
+    if (initialPreferences) {
+      if (initialPreferences.goal) setGoal(initialPreferences.goal);
+      if (initialPreferences.dietType) setDietType(initialPreferences.dietType);
+      if (initialPreferences.allergies) setAllergies(initialPreferences.allergies);
+      if (initialPreferences.calories) setCalories(initialPreferences.calories);
+    }
+  }, [initialPreferences, visible]); // Also run when modal becomes visible
 
   const goals = [
     { id: 'lose_weight', label: 'Weight Loss', desc: 'Calorie deficit, high protein' },
@@ -109,7 +121,7 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
                 </Text>
                 <View className="mb-6 gap-3">
                   {goals.map((item) => {
-                    const isSelected = goal === item.id;
+                    const isSelected = goal === item.id || goal === item.label; // Handle both id and label matching
                     return (
                       <TouchableOpacity
                         key={item.id}

@@ -55,7 +55,7 @@ export const AIService = {
   async saveMessage(
     role: 'user' | 'assistant',
     content: string | any[],
-    sessionId?: string,
+    sessionId?: string | null,
   ): Promise<void> {
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -133,55 +133,27 @@ export const AIService = {
   /**
    * Get list of chat sessions for the drawer
    */
+  /**
+   * Get list of chat sessions for the drawer
+   * Uses optimized RPC call 'get_user_chat_sessions'
+   */
   async getSessions(): Promise<any[]> {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return [];
+      const { data, error } = await supabase.rpc('get_user_chat_sessions');
 
-      // We want to group by session_id and get the last message + time
-      // Since supabase JS client doesn't support easy 'SELECT DISTINCT ON',
-      // we might need a stored procedure OR do client side grouping (not efficient for huge data but ok for MVP)
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
-      // Let's fetch all messages with session_id, order by created_at desc
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('session_id, content, created_at')
-        .not('session_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(500); // Fetch enough recent messages to construct sessions
-
-      if (error) throw error;
-
-      // Client side grouping
-      const sessionsMap = new Map();
-
-      data.forEach((msg: any) => {
-        if (!sessionsMap.has(msg.session_id)) {
-          let preview = '';
-          if (typeof msg.content === 'string') {
-            preview = msg.content;
-          } else if (Array.isArray(msg.content)) {
-            preview = 'Image/Media content';
-            const textPart = msg.content.find((c: any) => c.type === 'text');
-            if (textPart) preview = textPart.text;
-          }
-
-          sessionsMap.set(msg.session_id, {
-            id: msg.session_id,
-            title: preview.slice(0, 30) + (preview.length > 30 ? '...' : ''), // Simple title from last msg
-            lastMessage: preview,
-            timestamp: new Date(msg.created_at).getTime(),
-            messageCount: 1, // We'll count locally or just show 1+
-          });
-        } else {
-          const sess = sessionsMap.get(msg.session_id);
-          sess.messageCount += 1;
-          // If we want title to be the FIRST message, we need complex logic.
-          // For now, let's keep title as last message or generic.
-        }
-      });
-
-      return Array.from(sessionsMap.values());
+      // Map snake_case from DB to camelCase for frontend
+      return (data || []).map((session: any) => ({
+        id: session.id,
+        title: session.title || 'New Chat',
+        lastMessage: session.last_message,
+        timestamp: new Date(session.created_at).getTime(),
+        messageCount: session.message_count
+      }));
     } catch (e) {
       console.error('Get Sessions Error:', e);
       return [];
@@ -210,15 +182,57 @@ export const AIService = {
   },
 
   /**
-   * Clear all chat history for current user
+   * Create a new chat session
    */
+  async createSession(title: string = 'New Chat'): Promise<string | null> {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: userData.user.id,
+          title: title,
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Create Session Error:', error);
+        return null;
+      }
+      return data.id;
+    } catch (e) {
+      console.error('Create Session Exception:', e);
+      return null;
+    }
+  },
+
+  /**
+   * Update session title
+   */
+  async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
+     try {
+       const { error } = await supabase
+         .from('chat_sessions')
+         .update({ title })
+         .eq('id', sessionId);
+       return !error;
+     } catch (e) {
+       return false;
+     }
+  },
+  
+  // Existing clearHistory...
   async clearHistory(): Promise<void> {
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
 
+      // Delete sessions (cascade deletes messages)
       const { error } = await supabase
-        .from('chat_messages')
+        .from('chat_sessions')
         .delete()
         .eq('user_id', userData.user.id);
 

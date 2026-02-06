@@ -65,6 +65,16 @@ export const PantryRecommendationService = {
    */
   async getAIRecommendations(params: PantryRecommendationParams, token: string): Promise<RecipeWithPantryMatch[]> {
     try {
+      // Fetch personalization data first
+      let customPreferences = {};
+      try {
+        const { AuthApiService } = await import('./authApiService');
+        const personalRes = await AuthApiService.getPersonalization();
+        if (personalRes?.data?.personalization) {
+           customPreferences = personalRes.data.personalization;
+        }
+      } catch(e) { console.log('Failed to fetch prefs for pantry rec:', e); }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/pantry-recommendations`, {
         method: 'POST',
         headers: {
@@ -79,6 +89,7 @@ export const PantryRecommendationService = {
           difficulty: params.difficulty || 'easy',
           timeLimit: params.timeLimit || 60,
           servings: params.servings || 2,
+          customPreferences: customPreferences,
         }),
       });
 

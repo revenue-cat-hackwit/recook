@@ -18,6 +18,7 @@ import { RecipeService } from '@/lib/services/recipeService';
 import { PantryRecommendationService, RecipeWithPantryMatch } from '@/lib/services/pantryRecommendationService';
 import { CustomCameraModal } from '@/components/CustomCameraModal';
 import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
+import { LoadingModal } from '@/components/LoadingModal';
 import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger, TickCircle, MagicStar } from 'iconsax-react-native';
 
@@ -584,19 +585,12 @@ export default function PantryScreen() {
       </Modal>
 
       {/* Loading Overlay */}
-      {analyzing && (
-        <View className="absolute inset-0 z-50 items-center justify-center bg-black/50">
-          <View className="w-64 rounded-3xl bg-white p-8 shadow-2xl">
-            <ActivityIndicator size="large" color="#8BD65E" />
-            <Text className="mt-4 text-center font-visby-bold text-lg text-gray-800">
-              {loadingMessage || 'Processing...'}
-            </Text>
-            <Text className="mt-2 text-center font-visby text-sm text-gray-500">
-              This may take a few seconds
-            </Text>
-          </View>
-        </View>
-      )}
+      {/* Loading Overlay */}
+      <LoadingModal
+        visible={analyzing}
+        message={loadingMessage || 'Processing...'}
+        subMessage="This may take a few seconds"
+      />
 
       {/* Scan Preview Modal */}
       <Modal visible={showScanPreview} animationType="slide" presentationStyle="pageSheet">
@@ -841,21 +835,35 @@ export default function PantryScreen() {
           visible={!!selectedRecipe}
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onSave={async (recipe) => {
+          onUpdate={async (updatedRecipe) => {
             try {
-              await RecipeService.saveRecipe(recipe);
-              showAlert(
-                'Recipe Saved! 📖',
-                'Added to your recipe collection',
-                undefined,
-                {
-                  icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
-                }
-              );
-            } catch (error) {
+              // If it's an AI recommendation (temporary ID), save as new
+              if (updatedRecipe.id?.startsWith('ai-rec-')) {
+                await RecipeService.saveRecipe(updatedRecipe);
+                showAlert(
+                  'Recipe Saved! 📖',
+                  'Added to your recipe collection',
+                  undefined,
+                  {
+                    icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
+                  }
+                );
+              } else {
+                // Otherwise update existing
+                await RecipeService.updateRecipe(updatedRecipe);
+                showAlert(
+                  'Recipe Updated',
+                  'Your changes have been saved',
+                  undefined,
+                  {
+                    icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
+                  }
+                );
+              }
+            } catch (error: any) {
               showAlert(
                 'Error',
-                'Failed to save recipe',
+                error.message || 'Failed to save recipe',
                 undefined,
                 {
                   icon: <Danger size={32} color="#EF4444" variant="Bold" />,
@@ -863,6 +871,12 @@ export default function PantryScreen() {
                 }
               );
             }
+          }}
+          onDelete={() => {
+            setSelectedRecipe(null);
+          }}
+          onShare={(recipe) => {
+            console.log('Share:', recipe.title);
           }}
         />
       )}

@@ -3,13 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
 
 import { Alert, Text, TouchableOpacity, View, ScrollView, TextInput, ActivityIndicator } from 'react-native';
-import { ThemeSelector } from '@/components/ThemeSelector';
 import { Container } from '@/components/Container';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { CustomAlertModal } from '@/components/CustomAlertModal';
 
 import { usePreferencesStore } from '@/lib/store/preferencesStore';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { AIService } from '@/lib/services/aiService';
 import { PersonalizationService } from '@/lib/services/personalizationService';
 import { showAlert } from '@/lib/utils/globalAlert';
@@ -57,10 +56,10 @@ const PersonalizationSection = () => {
 
   const handleToggleAllergy = async (allergy: string) => {
     // Calculate new state BEFORE toggle (to avoid race condition)
-    const isCurrentlySelected = preferences.allergies.includes(allergy);
+    const isCurrentlySelected = preferences.foodAllergies.includes(allergy);
     const newAllergies = isCurrentlySelected
-      ? preferences.allergies.filter(a => a !== allergy)
-      : [...preferences.allergies, allergy];
+      ? preferences.foodAllergies.filter(a => a !== allergy)
+      : [...preferences.foodAllergies, allergy];
     
     // Update local state
     toggleAllergy(allergy);
@@ -74,13 +73,13 @@ const PersonalizationSection = () => {
       const cuisineToAdd = newCuisine.trim();
       
       // Check if already exists
-      if (preferences.cuisines.includes(cuisineToAdd)) {
+      if (preferences.favoriteCuisines.includes(cuisineToAdd)) {
         setNewCuisine('');
         return;
       }
       
       // Calculate new array
-      const newCuisines = [...preferences.cuisines, cuisineToAdd];
+      const newCuisines = [...preferences.favoriteCuisines, cuisineToAdd];
       
       // Update local state
       toggleCuisine(cuisineToAdd);
@@ -115,10 +114,10 @@ const PersonalizationSection = () => {
 
   const handleToggleEquipment = async (equipment: string) => {
     // Calculate new state BEFORE toggle (to avoid race condition)
-    const isCurrentlySelected = preferences.equipment.includes(equipment);
+    const isCurrentlySelected = preferences.whatsInYourKitchen.includes(equipment);
     const newEquipment = isCurrentlySelected
-      ? preferences.equipment.filter(e => e !== equipment)
-      : [...preferences.equipment, equipment];
+      ? preferences.whatsInYourKitchen.filter(e => e !== equipment)
+      : [...preferences.whatsInYourKitchen, equipment];
     
     // Update local state
     toggleEquipment(equipment);
@@ -132,13 +131,13 @@ const PersonalizationSection = () => {
       const allergyToAdd = newAllergy.trim();
       
       // Check if already exists
-      if (preferences.allergies.includes(allergyToAdd)) {
+      if (preferences.foodAllergies.includes(allergyToAdd)) {
         setNewAllergy('');
         return;
       }
       
       // Calculate new array
-      const newAllergies = [...preferences.allergies, allergyToAdd];
+      const newAllergies = [...preferences.foodAllergies, allergyToAdd];
       
       // Update local state
       toggleAllergy(allergyToAdd);
@@ -154,13 +153,13 @@ const PersonalizationSection = () => {
       const equipmentToAdd = newEquipment.trim();
       
       // Check if already exists
-      if (preferences.equipment.includes(equipmentToAdd)) {
+      if (preferences.whatsInYourKitchen.includes(equipmentToAdd)) {
         setNewEquipment('');
         return;
       }
       
       // Calculate new array
-      const newEquipmentList = [...preferences.equipment, equipmentToAdd];
+      const newEquipmentList = [...preferences.whatsInYourKitchen, equipmentToAdd];
       
       // Update local state
       toggleEquipment(equipmentToAdd);
@@ -190,12 +189,12 @@ const PersonalizationSection = () => {
         Favorite Cuisines
       </Text>
       <View className="mb-4 flex-row flex-wrap gap-2">
-        {preferences.cuisines.map((item) => (
+        {preferences.favoriteCuisines.map((item) => (
           <TouchableOpacity
             key={item}
             onPress={async () => {
               // Calculate new state BEFORE toggle
-              const newCuisines = preferences.cuisines.filter(c => c !== item);
+              const newCuisines = preferences.favoriteCuisines.filter(c => c !== item);
               
               // Update local state
               toggleCuisine(item);
@@ -276,7 +275,7 @@ const PersonalizationSection = () => {
         Allergies / Restrictions
       </Text>
       <View className="mb-4 flex-row flex-wrap gap-2">
-        {preferences.allergies.map((item) => (
+        {preferences.foodAllergies.map((item) => (
           <TouchableOpacity
             key={item}
             onPress={() => handleToggleAllergy(item)}
@@ -310,7 +309,7 @@ const PersonalizationSection = () => {
         Kitchen Equipment
       </Text>
       <View className="flex-row flex-wrap gap-2">
-        {preferences.equipment.map((item) => (
+        {preferences.whatsInYourKitchen.map((item) => (
           <TouchableOpacity
             key={item}
             onPress={() => handleToggleEquipment(item)}
@@ -346,7 +345,7 @@ const PersonalizationSection = () => {
 
       {/* Suggestions */}
       <View className="mt-2 flex-row flex-wrap gap-2">
-        {EQUIPMENT_OPT.filter((e) => !preferences.equipment.includes(e)).map((e) => (
+        {EQUIPMENT_OPT.filter((e) => !preferences.whatsInYourKitchen.includes(e)).map((e) => (
           <TouchableOpacity 
             key={e} 
             onPress={() => handleToggleEquipment(e)}
@@ -372,6 +371,9 @@ export default function SettingsScreen() {
     syncPreferences();
   }, [syncPreferences]);
 
+  // Get navigation object to reset history
+  const navigation = useNavigation();
+
   const handleSignOut = () => {
     setSignOutAlertVisible(true);
   };
@@ -380,7 +382,18 @@ export default function SettingsScreen() {
     try {
       await useAuthStore.getState().signOut();
       setSignOutAlertVisible(false);
-      router.replace('/(auth)/sign-in');
+      
+      // Reset navigation history to prevent going back
+      // This resets the Root Stack to the Auth stack
+      if (navigation && navigation.reset) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: '(auth)', params: { screen: 'sign-in' } }],
+        } as any);
+      } else {
+        // Fallback if reset is not available
+        router.replace('/(auth)/sign-in');
+      }
     } catch (error) {
       console.error('Sign out error:', error);
       showAlert('Error', 'Failed to sign out. Please try again.', undefined, {
@@ -439,13 +452,7 @@ export default function SettingsScreen() {
         {/* Section: Personalization */}
         <PersonalizationSection />
 
-        {/* Section: App Settings */}
-        {/* <View className="mb-8">
-          <Text className="mb-4 font-visby-bold text-lg text-gray-900 dark:text-gray-100">
-            App Preferences
-          </Text>
-          <ThemeSelector />
-        </View> */}
+
 
         {/* Section: Account */}
         <View className="mb-8">

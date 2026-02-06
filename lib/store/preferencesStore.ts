@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserPreferences } from '@/lib/types';
-import { supabase } from '@/lib/supabase';
+import { AuthApiService } from '../services/authApiService';
 
 interface PreferencesState {
   hasOnboarded: boolean;
@@ -12,18 +12,17 @@ interface PreferencesState {
   toggleTastePreference: (preference: string) => Promise<void>;
   toggleAllergy: (allergy: string) => Promise<void>;
   toggleEquipment: (tool: string) => Promise<void>;
-  setDietGoal: (goal: string) => Promise<void>;
   completeOnboarding: () => void;
   setHasOnboarded: (value: boolean) => void;
-  sync: () => Promise<void>; // Fetch from cloud
+  sync: () => Promise<void>;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
-  cuisines: [],
+  favoriteCuisines: [],
   tastePreferences: [],
-  allergies: [],
-  equipment: ['Stove', 'Pan', 'Knife'], // Default basics
-  dietGoal: 'balanced',
+  foodAllergies: [],
+  whatsInYourKitchen: ['Stove', 'Pan', 'Knife'],
+  otherTools: [],
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -38,31 +37,24 @@ export const usePreferencesStore = create<PreferencesState>()(
       setHasOnboarded: (value: boolean) => set({ hasOnboarded: value }),
 
       toggleCuisine: async (cuisine) => {
-        // 1. Optimistic Update
         const state = get();
-        const exists = state.preferences.cuisines.includes(cuisine);
+        const exists = state.preferences.favoriteCuisines.includes(cuisine);
         const newCuisines = exists
-          ? state.preferences.cuisines.filter((c) => c !== cuisine)
-          : [...state.preferences.cuisines, cuisine];
+          ? state.preferences.favoriteCuisines.filter((c) => c !== cuisine)
+          : [...state.preferences.favoriteCuisines, cuisine];
 
         set((s) => ({
-          preferences: { ...s.preferences, cuisines: newCuisines },
+          preferences: { ...s.preferences, favoriteCuisines: newCuisines },
         }));
 
-        // 2. Cloud Update
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase
-            .from('profiles')
-            .update({ cuisines: newCuisines })
-            .eq('id', session.user.id);
+        try {
+          await AuthApiService.createPersonalization({ favoriteCuisines: newCuisines });
+        } catch (e) {
+          console.error('Failed to update cuisines:', e);
         }
       },
 
       toggleTastePreference: async (preference) => {
-        // 1. Optimistic Update
         const state = get();
         const exists = state.preferences.tastePreferences.includes(preference);
         const newTastePreferences = exists
@@ -73,41 +65,29 @@ export const usePreferencesStore = create<PreferencesState>()(
           preferences: { ...s.preferences, tastePreferences: newTastePreferences },
         }));
 
-        // 2. Cloud Update
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase
-            .from('profiles')
-            .update({ taste_preferences: newTastePreferences })
-            .eq('id', session.user.id);
+        try {
+          await AuthApiService.createPersonalization({ tastePreferences: newTastePreferences });
+        } catch (e) {
+          console.error('Failed to update taste preferences:', e);
         }
       },
 
       sync: async () => {
         set({ isLoading: true });
         try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (!session?.user) return;
-
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('diet_goal, cuisines, taste_preferences, allergies, equipment')
-            .eq('id', session.user.id)
-            .single();
-
-          if (data && !error) {
+          // Use getPersonalization instead of getProfile
+          const response = await AuthApiService.getPersonalization();
+          
+          if (response && response.data && response.data.personalization) {
+            const data = response.data.personalization;
             set((state) => ({
               preferences: {
                 ...state.preferences,
-                dietGoal: data.diet_goal || state.preferences.dietGoal,
-                cuisines: data.cuisines || [],
-                tastePreferences: data.taste_preferences || [],
-                allergies: data.allergies || [],
-                equipment: data.equipment || [],
+                favoriteCuisines: data.favoriteCuisines || state.preferences.favoriteCuisines,
+                tastePreferences: data.tastePreferences || state.preferences.tastePreferences,
+                foodAllergies: data.foodAllergies || state.preferences.foodAllergies,
+                whatsInYourKitchen: data.whatsInYourKitchen || state.preferences.whatsInYourKitchen,
+                otherTools: data.otherTools || state.preferences.otherTools,
               },
             }));
           }
@@ -119,65 +99,38 @@ export const usePreferencesStore = create<PreferencesState>()(
       },
 
       toggleAllergy: async (allergy) => {
-        // 1. Optimistic Update
         const state = get();
-        const exists = state.preferences.allergies.includes(allergy);
+        const exists = state.preferences.foodAllergies.includes(allergy);
         const newAllergies = exists
-          ? state.preferences.allergies.filter((a) => a !== allergy)
-          : [...state.preferences.allergies, allergy];
+          ? state.preferences.foodAllergies.filter((a) => a !== allergy)
+          : [...state.preferences.foodAllergies, allergy];
 
         set((s) => ({
-          preferences: { ...s.preferences, allergies: newAllergies },
+          preferences: { ...s.preferences, foodAllergies: newAllergies },
         }));
 
-        // 2. Cloud Update
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase
-            .from('profiles')
-            .update({ allergies: newAllergies })
-            .eq('id', session.user.id);
+        try {
+          await AuthApiService.createPersonalization({ foodAllergies: newAllergies });
+        } catch (e) {
+          console.error('Failed to update allergies:', e);
         }
       },
 
       toggleEquipment: async (tool) => {
-        // 1. Optimistic Update
         const state = get();
-        const exists = state.preferences.equipment.includes(tool);
+        const exists = state.preferences.whatsInYourKitchen.includes(tool);
         const newEquipment = exists
-          ? state.preferences.equipment.filter((t) => t !== tool)
-          : [...state.preferences.equipment, tool];
+          ? state.preferences.whatsInYourKitchen.filter((t) => t !== tool)
+          : [...state.preferences.whatsInYourKitchen, tool];
 
         set((s) => ({
-          preferences: { ...s.preferences, equipment: newEquipment },
+          preferences: { ...s.preferences, whatsInYourKitchen: newEquipment },
         }));
 
-        // 2. Cloud Update
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase
-            .from('profiles')
-            .update({ equipment: newEquipment })
-            .eq('id', session.user.id);
-        }
-      },
-
-      setDietGoal: async (goal) => {
-        // 1. Optimistic
-        set((s) => ({
-          preferences: { ...s.preferences, dietGoal: goal },
-        }));
-
-        // 2. Cloud
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session?.user) {
-          await supabase.from('profiles').update({ diet_goal: goal }).eq('id', session.user.id);
+        try {
+          await AuthApiService.createPersonalization({ whatsInYourKitchen: newEquipment });
+        } catch (e) {
+          console.error('Failed to update equipment:', e);
         }
       },
     }),

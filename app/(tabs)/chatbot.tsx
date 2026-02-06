@@ -15,7 +15,7 @@ import { Danger, TickCircle, MagicStar, Trash, HambergerMenu } from 'iconsax-rea
 import * as ImagePicker from 'expo-image-picker';
 import { Message, Recipe } from '@/lib/types';
 import { AIService } from '@/lib/services/aiService';
-import { ChatService } from '@/lib/services/chatService';
+
 import { RecipeService } from '@/lib/services/recipeService';
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -25,41 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { ChatHistoryDrawer } from '@/components/chat/ChatHistoryDrawer';
 import { useRouter } from 'expo-router';
 
-const dummyMessages: Message[] = [
-  {
-    id: '1',
-    role: 'assistant',
-    content:
-      "Hi, I'm Cooki! 🍳 I'm here to help you turn those viral links into real meals. What are we cooking today?",
-    timestamp: Date.now() - 300000,
-  },
-  {
-    id: '2',
-    role: 'user',
-    content: 'Aku punya ayam, bawang putih, dan kecap manis',
-    timestamp: Date.now() - 240000,
-  },
-  {
-    id: '3',
-    role: 'assistant',
-    content:
-      '🍗 **Resep Ayam Kecap Manis**\n\n**Bahan:**\n- 500g ayam potong\n- 4 siung bawang putih\n- 3 sdm kecap manis\n- Garam dan merica secukupnya\n\n**Cara Masak:**\n1. Goreng ayam hingga kecokelatan\n2. Tumis bawang putih hingga harum\n3. Masukkan ayam, tambahkan kecap manis\n4. Aduk rata, masak hingga bumbu meresap\n\nSelamat mencoba! 😋',
-    timestamp: Date.now() - 180000,
-  },
-  {
-    id: '4',
-    role: 'user',
-    content: 'Wah enak! Kalau mau bikin nasi goreng gimana?',
-    timestamp: Date.now() - 120000,
-  },
-  {
-    id: '5',
-    role: 'assistant',
-    content:
-      '🍚 **Resep Nasi Goreng Sederhana**\n\n**Bahan:**\n- 2 piring nasi putih (sebaiknya nasi dingin)\n- 2 butir telur\n- 3 siung bawang putih\n- 2 sdm kecap manis\n- Garam secukupnya\n\n**Cara Masak:**\n1. Kocok telur, buat orak-arik\n2. Tumis bawang putih hingga harum\n3. Masukkan nasi, aduk rata\n4. Tambahkan kecap manis dan garam\n5. Masak hingga nasi kering dan harum\n\nTips: Gunakan api besar agar nasi tidak lembek! 🔥',
-    timestamp: Date.now() - 60000,
-  },
-];
+
 
 const ThinkingIndicator = () => {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -111,9 +77,14 @@ export default function Chatbot() {
   // Keyboard listener to scroll to bottom when keyboard shows
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      // Scroll to bottom when keyboard opens, with delays to allow layout to settle
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      }, 200);
+      // Safety check later
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 500);
     });
 
     return () => {
@@ -123,18 +94,7 @@ export default function Chatbot() {
 
   useEffect(() => {
     // Initial load: Try to get sessions first, if any, load the latest one.
-    loadSessions().then((sessions) => {
-      if (sessions.length > 0) {
-        // Load the most recent session
-        const lastSession = sessions[0];
-        setCurrentTitleId(lastSession.id);
-        loadHistory(lastSession.id);
-      } else {
-        // New user or no history, start with empty chat (titleId = null)
-        setCurrentTitleId(null);
-        setMessages([]);
-      }
-    });
+    loadSessions();
     loadSavedRecipes();
   }, []);
 
@@ -148,22 +108,19 @@ export default function Chatbot() {
   const loadSessions = async () => {
     setChatHistoryLoading(true);
     try {
-      const response = await ChatService.getChatTitles();
+      const sessions = await AIService.getSessions();
+      setChatSessions(sessions);
       
-      if (response.success && response.data) {
-        // Transform API data to ChatSession format
-        const sessions = response.data.map((chat) => ({
-          id: chat._id,
-          title: chat.title,
-          lastMessage: '', // API doesn't provide this, could be enhanced
-          timestamp: new Date(chat.createdAt).getTime(),
-          messageCount: 0, // API doesn't provide this, could be enhanced
-        }));
-        
-        setChatSessions(sessions);
-        return sessions;
+      // If we have sessions but no current chat selected, select the first one
+      if (sessions.length > 0 && !currentTitleId) {
+        setCurrentTitleId(sessions[0].id);
+        loadHistory(sessions[0].id);
+      } else if (sessions.length === 0) {
+        // Start fresh
+        setCurrentTitleId(null);
+        setMessages([]);
       }
-      return [];
+      return sessions;
     } catch (error) {
       console.error('Failed to load chat sessions:', error);
       return [];
@@ -172,25 +129,11 @@ export default function Chatbot() {
     }
   };
 
-  const loadHistory = async (titleId: string) => {
+  const loadHistory = async (sessionId: string) => {
     setLoading(true);
     try {
-      const response = await ChatService.getChatHistory(titleId);
-      
-      if (response.success && response.data && response.data.length > 0) {
-        // Transform API messages to app Message format
-        const chatHistory = response.data[0];
-        const transformedMessages: Message[] = chatHistory.messages.map((msg, index) => ({
-          id: `${titleId}-${index}`,
-          role: msg.role,
-          content: msg.content,
-          timestamp: Date.now() - (chatHistory.messages.length - index) * 1000, // Fake timestamps
-        }));
-        
-        setMessages(transformedMessages);
-      } else {
-        setMessages([]);
-      }
+      const history = await AIService.getHistory(sessionId);
+      setMessages(history);
     } catch (e) {
       console.error('Failed to load history', e);
       setMessages([]);
@@ -208,65 +151,95 @@ export default function Chatbot() {
     }
   };
 
+  // Helper for generating UUIDs
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim() && !loading) return;
 
     const userMessageContent = inputText.trim();
+    
+    // Create a temporary ID for optimistic UI
+    const tempId = generateUUID();
+    
+    // 1. Prepare User Message
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: tempId,
       role: 'user',
       content: userMessageContent,
       timestamp: Date.now(),
     };
 
+    // 2. Optimistic Update
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      let titleId = currentTitleId;
-      
-      // If this is the first message (no titleId), create a new title
-      if (!titleId) {
-        const titleResponse = await ChatService.createChatTitle(userMessageContent);
-        if (titleResponse.success && titleResponse.data) {
-          titleId = titleResponse.data._id;
-          setCurrentTitleId(titleId);
-          // Refresh session list to show new chat
-          loadSessions();
+      let sessionId = currentTitleId;
+
+      // 3. New Session Handling (if no session selected)
+      if (!sessionId) {
+        // Create session in DB first to get a real ID and set title from first message
+        const newSessionId = await AIService.createSession(userMessageContent.slice(0, 50));
+        if (newSessionId) {
+            sessionId = newSessionId;
+            setCurrentTitleId(sessionId);
         } else {
-          throw new Error('Failed to create chat title');
+            // Fallback if DB fails (offline mode?) - tough choice, maybe error or fallback to local
+            throw new Error("Failed to start new conversation");
         }
       }
 
-      // Send message and get AI response
-      const response = await ChatService.askAndSave(titleId, userMessageContent, 'groq');
-      
-      if (response.success && response.data) {
+      // 4. Save User Message to DB (Background)
+      AIService.saveMessage('user', userMessageContent, sessionId);
+
+      // 5. Call AI Edge Function
+      const allMessages = [...messages, userMessage]; 
+      const aiResponseContent = await AIService.sendMessage(allMessages);
+
+      if (aiResponseContent) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUUID(),
           role: 'assistant',
-          content: response.data.response,
+          content: aiResponseContent,
           timestamp: Date.now(),
         };
 
+        // 6. Update UI with AI Response
         setMessages((prev) => [...prev, aiMessage]);
+
+        // 7. Save AI Message to DB
+        AIService.saveMessage('assistant', aiResponseContent, sessionId);
+        
+        // 8. Refresh sessions list
+        loadSessions(); 
       } else {
-        throw new Error('Failed to get AI response');
+        throw new Error('Empty response from AI');
       }
     } catch (error: any) {
       console.error('[Chatbot] Error calling AI:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      showAlert('Error', 'Sorry, Cooki is busy right now. Please try again later!', undefined, {
+      
+      const errorMessage = error.message.includes('Unauthorized') 
+          ? 'Please login to use Cooki.' 
+          : 'Sorry, Cooki is taking a break. Try again later.';
+
+      showAlert('Error', errorMessage, undefined, {
         icon: <Danger size={32} color="#EF4444" variant="Bold" />,
         type: 'destructive',
       });
       
-      // Remove the user message if failed
-      setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id));
+      // Remove the optimistic user message if failed
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     } finally {
       setLoading(false);
     }
@@ -307,8 +280,21 @@ export default function Chatbot() {
         return;
       }
       const base64 = `data:image/jpeg;base64,${asset.base64}`;
+      
+      let sessionId = currentTitleId;
+      if (!sessionId) {
+          // Create session for Image Analysis
+          const newSessionId = await AIService.createSession("Image Analysis");
+          if (newSessionId) {
+             sessionId = newSessionId;
+             setCurrentTitleId(sessionId);
+          } else {
+             throw new Error("Failed to start image session");
+          }
+      }
+
       const userMessage: Message = {
-        id: Date.now().toString(),
+        id: generateUUID(),
         role: 'user',
         content: [
           {
@@ -326,7 +312,7 @@ export default function Chatbot() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       // Save User Msg (Image + Text) with Session ID
-      AIService.saveMessage('user', userMessage.content!, currentTitleId);
+      AIService.saveMessage('user', userMessage.content!, sessionId);
 
       try {
         const allMessages = messages.concat(userMessage);
@@ -336,7 +322,7 @@ export default function Chatbot() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
         const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
+          id: generateUUID(),
           role: 'assistant',
           content: aiResponseContent,
           timestamp: Date.now(),
@@ -345,7 +331,7 @@ export default function Chatbot() {
         setMessages((prev) => [...prev, aiMessage]);
 
         // Save AI with Session ID
-        AIService.saveMessage('assistant', aiResponseContent, currentTitleId);
+        AIService.saveMessage('assistant', aiResponseContent, sessionId);
         loadSessions();
       } catch (error: any) {
         console.error('Error analyzing image:', error);
@@ -545,7 +531,7 @@ export default function Chatbot() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
       >
         <View className="flex-1">
           {/* Header with Hamburger Menu */}
@@ -578,7 +564,7 @@ export default function Chatbot() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{
               padding: 16,
-              paddingBottom: 100,
+              paddingBottom: 180, // Maximum space for keyboard + input
               backgroundColor: '#ffffff',
               flexGrow: 1,
             }}
@@ -597,18 +583,21 @@ export default function Chatbot() {
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => {
               // Auto scroll to bottom when new message
-              flatListRef.current?.scrollToEnd({ animated: true });
+              if(messages.length > 0) {
+                 flatListRef.current?.scrollToEnd({ animated: true });
+              }
             }}
           />
 
-          {/* Floating Input Box at bottom of container */}
+          {/* Floating Input Box */}
           <View
             style={{
               position: 'absolute',
               bottom: 0,
               left: 0,
               right: 0,
-              backgroundColor: 'transparent',
+              backgroundColor: 'transparent', // Transparent background as requested
+              paddingBottom: Platform.OS === 'ios' ? 0 : 10,
             }}
           >
             <ChatInput

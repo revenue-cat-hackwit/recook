@@ -1,11 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { usePreferencesStore } from '@/lib/store/preferencesStore';
-import { TokenStorage } from './apiClient';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || 'https://your-api-url.com';
-
-// Log API URL on module load
-console.log('🔧 PersonalizationService initialized with API_BASE_URL:', API_BASE_URL);
+import apiClient, { TokenStorage, API_BASE_URL } from './apiClient';
 
 export interface PersonalizationCheckResponse {
   success: boolean;

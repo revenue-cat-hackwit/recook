@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,18 +17,26 @@ import { ProButton } from '@/components/ProButton';
 import { useShoppingListStore } from '@/lib/store/shoppingListStore';
 import RevenueCatUI from 'react-native-purchases-ui';
 import { usePreferencesStore } from '@/lib/store/preferencesStore';
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
 import * as Haptics from 'expo-haptics';
-import { ChefLoading } from '@/components/ChefLoading';
+import { LoadingModal } from '@/components/LoadingModal';
 import { useRecipeGenerator } from '@/lib/hooks/useRecipeGenerator';
 import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
 import { useRecipeStorage } from '@/lib/hooks/useRecipeStorage';
 import { CustomAlertModal } from '@/components/CustomAlertModal';
 import { CustomCameraModal } from '@/components/CustomCameraModal';
+import { PostService } from '@/lib/services/postService';
 
 export default function GenerateScreen() {
   // Dependencies
   const preferences = usePreferencesStore((state) => state.preferences);
+  const syncPreferences = usePreferencesStore((state) => state.sync);
+  
+  useEffect(() => {
+    syncPreferences();
+  }, []);
   const addToShoppingList = useShoppingListStore((state) => state.addMultiple);
+  const initialize = useSubscriptionStore((state) => state.initialize);
   const toastRef = useRef<ToastRef>(null);
 
   // Storage for manual saving
@@ -191,13 +199,12 @@ export default function GenerateScreen() {
               <TouchableOpacity
                 onPress={async () => {
                   try {
-                    const { CommunityService } = await import('@/lib/services/communityService');
-                    await CommunityService.publishRecipe(recipe);
+                    await PostService.publishRecipe(recipe);
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     toastRef.current?.show('Published to Community Feed!', 'success');
                     showAlert('Success', 'Your recipe is now live on the Community Feed! 🌍');
-                  } catch (e) {
-                    showAlert('Error', 'Failed to publish recipe.');
+                  } catch (e: any) {
+                    showAlert('Error', e.message || 'Failed to publish recipe.');
                   }
                 }}
                 className="mb-4 flex-row items-center justify-center rounded-full border border-blue-100 bg-blue-50 py-3"
@@ -287,8 +294,7 @@ export default function GenerateScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* LOADING OVERLAY */}
-      {loading && <ChefLoading status={loadingMessage} />}
+      <LoadingModal visible={loading} message="Generating Recipe..." subMessage={loadingMessage} />
 
       {/* AppBar */}
       <View className="flex-row items-center justify-between bg-white px-4 pb-3 pt-2">
