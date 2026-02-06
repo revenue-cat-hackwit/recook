@@ -18,6 +18,7 @@ import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger, TickCircle, Logout } from 'iconsax-react-native';
 import StepIndicator from '@/components/StepIndicator';
 import SelectableCard from '@/components/SelectableCard';
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
 
 export default function PersonalizationScreen() {
   const router = useRouter();
@@ -160,6 +161,9 @@ export default function PersonalizationScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Reset Subscription Store (RevenueCat Logout)
+              await useSubscriptionStore.getState().reset();
+              
               await signOut();
               router.replace('/(auth)/sign-in');
             } catch (error) {
@@ -197,7 +201,7 @@ export default function PersonalizationScreen() {
         completeOnboarding();
         
         showAlert(
-          'Setup Complete! 🎉',
+          'Setup Complete!',
           'Your personalized cooking experience is ready',
           undefined,
           {

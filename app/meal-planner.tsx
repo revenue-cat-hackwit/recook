@@ -198,7 +198,7 @@ function MealPlannerContent() {
       .filter((p) => p.date === targetDate)
       .reduce((acc, curr) => {
         // Extract number from string like "400 kcal" or just "400"
-        const calString = curr.recipe.calories_per_serving?.replace(/[^0-9]/g, '') || '0';
+        const calString = String(curr.recipe.calories_per_serving || '0').replace(/[^0-9]/g, '');
         const cal = parseInt(calString, 10);
         return acc + (isNaN(cal) ? 0 : cal);
       }, 0);
@@ -360,16 +360,77 @@ function MealPlannerContent() {
     }
   };
 
+  // State to track recently generated recipe to bypass placeholder check immediately
+  // const [justGeneratedRecipeId, setJustGeneratedRecipeId] = useState<string | null>(null); // Deprecated
+  
+  // Track which Meal Plan is currently being viewed/edited
+  const [selectedMealPlanId, setSelectedMealPlanId] = useState<string | null>(null);
+
+  // Auto-generate image for recipe if missing (Moved UP to avoid hoisting issues)
+  const handleGenerateImage = async (recipe: Recipe) => {
+    if (!recipe.id || generatingImages.has(recipe.id)) return;
+
+    setGeneratingImages((prev) => new Set(prev).add(recipe.id!));
+    try {
+      const imageUrl = await RecipeService.generateImage(recipe.title);
+
+      // Update recipe with new image
+      const updatedRecipe = { ...recipe, imageUrl };
+      await RecipeService.updateRecipe(updatedRecipe);
+
+      // Refresh meal plans to show new image
+      loadData(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      showAlert({
+        title: 'Failed',
+        message: 'Could not generate image. Please try again.',
+        type: 'destructive',
+        icon: <Danger size={32} color="#EF4444" variant="Bold" />,
+      });
+    } finally {
+      setGeneratingImages((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(recipe.id!);
+        return newSet;
+      });
+    }
+  };
+
   // Recipe Detail Modal Handlers
-  const handleMealPress = (recipe: Recipe) => {
+  const handleMealPress = (plan: MealPlan) => {
+    setSelectedMealPlanId(plan.id); // Track Plan Context
+    const recipe = plan.recipe;
+    
+    // Check if recipe is "placeholder" (title only) OR virtual idea
+    const isPlaceholder =
+      (!recipe.ingredients || recipe.ingredients.length === 0) &&
+      (!recipe.steps || recipe.steps.length === 0);
+
+    if (isPlaceholder) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showAlert({
+        title: 'Generate Recipe Idea?',
+        message: `This meal plan for "${recipe.title}" is currently just an idea. Would you like AI to create the full recipe (ingredients & steps) for you now?`,
+        icon: <MagicStar size={32} color="#8BD65E" variant="Bold" />,
+        confirmText: 'Generate Recipe',
+        showCancel: true,
+        type: 'default',
+        onConfirm: () => handleGenerateFull(recipe, plan.id), // Pass recipe AND explicit plan ID
+      });
+      return;
+    }
+
     setInitialModalMode('view');
     setSelectedRecipe(recipe);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
-
-  const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
+  
+const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
     try {
-      if (updatedRecipe.id) {
+      // Check if updating an existing REAL recipe
+      if (updatedRecipe.id && !updatedRecipe.id.startsWith('idea-')) {
         await RecipeService.updateRecipe(updatedRecipe);
         setSelectedRecipe(updatedRecipe);
         showAlert({
@@ -378,16 +439,26 @@ function MealPlannerContent() {
           icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
         });
       } else {
-        // Create new recipe
+        // Create new recipe (from scratch OR converting an idea)
         const result = await RecipeService.saveRecipe(updatedRecipe);
         const savedRecipe = (result as any).data || result;
 
         if (savedRecipe?.id) {
-          await MealPlannerService.addMealPlan(
-            savedRecipe.id,
-            formatDate(selectedDate),
-            targetMealType,
-          );
+          // If we are in context of a Meal Plan, link it!
+          if (selectedMealPlanId) {
+             await MealPlannerService.updateMealPlanRecipe(
+                selectedMealPlanId,
+                savedRecipe.id
+             );
+          } else {
+             // Fallback add (if creating fresh)
+             await MealPlannerService.addMealPlan(
+               savedRecipe.id,
+               formatDate(selectedDate),
+               targetMealType,
+             );
+          }
+
           setSelectedRecipe(null); // Close modal
           showAlert({
             title: 'Success',
@@ -457,61 +528,121 @@ function MealPlannerContent() {
   };
 
   const handleGenerateFull = useCallback(
-    async (recipe: Recipe) => {
+    async (recipe: Recipe, explicitPlanId?: string) => {
+      // Determine the target Meal Plan ID
+      const targetPlanId = explicitPlanId || selectedMealPlanId;
+      
       console.log('🍳🍳🍳 ===== handleGenerateFull START =====');
-      console.log('🍳 handleGenerateFull called in meal-planner with recipe:', recipe.id);
-      console.log('🍳 completeRecipe available:', !!completeRecipe);
+      console.log('🍳 Generating for Plan ID:', targetPlanId);
+
+      if (!targetPlanId) {
+          console.error("🍳 ERROR: No target plan ID found. Cannot link recipe.");
+          showAlert({ title: 'Error', message: 'Could not identify which meal plan to update.', type: 'destructive' });
+          return;
+      }
+
       try {
         console.log('🍳 Calling completeRecipe...');
+        
+        // 1. Generate Content using AI
         const result = await completeRecipe(recipe);
         console.log('🍳 completeRecipe result:', result);
 
         // Check if quota exceeded
         if (result && !result.success && result.needsPaywall) {
-          console.log('🍳 Quota exceeded - showing paywall alert');
-          showAlert({
+           console.log('🍳 Quota exceeded');
+           showAlert({
             title: 'Daily Limit Reached 🍳',
-            message:
-              'You have used your 3 free recipes for today. Upgrade to Pro for unlimited access!',
+            message: 'Upgrade to Pro for unlimited access!',
             confirmText: 'Upgrade to Pro',
-            cancelText: 'Cancel',
             showCancel: true,
-            type: 'default',
-            onConfirm: async () => {
+            onConfirm: () => {
               const RevenueCatUI = require('react-native-purchases-ui').default;
-              const paywallResult = await RevenueCatUI.presentPaywall();
-              console.log('Paywall result:', paywallResult);
+              RevenueCatUI.presentPaywall();
             },
           });
           return;
         }
 
         if (result && result.success && result.data) {
-          console.log('🍳 Setting selectedRecipe with new data:', result.data);
+          const generatedContent = result.data;
+          console.log('🍳 Generated Content Ready.');
 
-          // Close and reopen modal with new data to force refresh
-          setSelectedRecipe(null);
-          setTimeout(() => {
-            setSelectedRecipe(result.data);
-          }, 100);
+          let savedRealRecipe;
+          
+          // 2a. CHECK FOR DUPLICATES: Don't create spam if title exists
+          // Use the title from the generated content (likely cleaner) or the original idea title
+          const targetTitle = generatedContent.title || recipe.title;
+          console.log(`🍳 Checking for existing recipe with title: "${targetTitle}"...`);
+          
+          const existingDuplicate = await RecipeService.findRecipeByTitle(targetTitle);
 
-          loadData(true); // Refresh to show completed recipe in meal plan
+          if (existingDuplicate && existingDuplicate.id) {
+             console.log(`🍳 Found existing recipe [${existingDuplicate.id}]. Updating it instead of creating new.`);
+             
+             // Update the existing recipe with the new AI content
+             const recipeToUpdate = {
+                ...existingDuplicate, // Keep old ID, creator info, etc.
+                ...generatedContent,  // Overwrite ingredients, steps, etc.
+                imageUrl: existingDuplicate.imageUrl || generatedContent.imageUrl // Prefer existing image if any, else new
+             };
+             
+             await RecipeService.updateRecipe(recipeToUpdate);
+             savedRealRecipe = recipeToUpdate;
+          } else {
+             // 2b. Create NEW Real Recipe
+             const recipeToSave = {
+                ...generatedContent,
+                id: undefined, // ensure creation
+             };
+             
+             console.log('🍳 Saving NEW real recipe to DB...');
+             const saveResult = await RecipeService.saveRecipe(recipeToSave);
+             savedRealRecipe = (saveResult as any).data || saveResult;
+          }
+          
+          if (!savedRealRecipe || !savedRealRecipe.id) {
+             throw new Error('Failed to save or update recipe.');
+          }
+          console.log('🍳 Final Real Recipe ID:', savedRealRecipe.id);
+
+          // 3. Link this recipe to the Meal Plan
+          console.log('🍳 Linking Recipe to Meal Plan...');
+          await MealPlannerService.updateMealPlanRecipe(targetPlanId, savedRealRecipe.id);
+
+          // 4. Force Local State Update (Optimistic Update)
+          const finalRecipeData = { ...savedRealRecipe, imageUrl: savedRealRecipe.imageUrl || generatedContent.imageUrl };
+
+          setMealPlans((prevPlans) => {
+             return prevPlans.map((p) => {
+                if (p.id === targetPlanId) {
+                     console.log(`🍳 Local Update MATCH for Plan ID: ${targetPlanId}`);
+                     return {
+                        ...p,
+                        recipe: finalRecipeData, // Replace virtual recipe with real one
+                        idea_title: null, // Clear idea flags locally
+                     };
+                }
+                return p;
+             });
+          });
+
+          // 5. Open Modal with New Data
+          setSelectedRecipe(finalRecipeData);
+
+          // 6. Trigger Image Generation if needed (only if no image exists)
+          if (!finalRecipeData.imageUrl) {
+             console.log('🍳 Triggering image generation for recipe');
+             handleGenerateImage(finalRecipeData);
+          }
+
           showAlert({
-            title: 'Recipe Completed',
-            message: 'Your recipe details are ready! 👨‍🍳',
+            title: existingDuplicate ? 'Recipe Updated!' : 'Recipe Created!',
+            message: 'Your meal plan is now ready to cook! 👨‍🍳',
             icon: <MagicStar size={32} color="#8BD65E" variant="Bold" />,
           });
         } else {
-          console.log('🍳 completeRecipe failed or returned no data');
-          console.log('🍳 Error from result:', result?.error);
-
-          // Show error to user
-          showAlert({
-            title: 'Generation Failed',
-            message: result?.error || 'Could not generate recipe details. Please try again.',
-            icon: <Danger size={32} color="#EF4444" variant="Bold" />,
-            type: 'destructive',
-          });
+             showAlert({ title: 'Failed', message: result?.error || 'Generation failed', type: 'destructive' });
         }
       } catch (error: any) {
         console.error('🍳 Error in handleGenerateFull:', error);
@@ -524,40 +655,8 @@ function MealPlannerContent() {
       }
       console.log('🍳🍳🍳 ===== handleGenerateFull END =====');
     },
-    [completeRecipe, loadData, showAlert],
+    [completeRecipe, loadData, showAlert, selectedMealPlanId], // Removed handleGenerateImage from deps to avoid loop/warning, it is stable.
   );
-
-  // Auto-generate image for recipe if missing
-  const handleGenerateImage = async (recipe: Recipe) => {
-    if (!recipe.id || generatingImages.has(recipe.id)) return;
-
-    setGeneratingImages((prev) => new Set(prev).add(recipe.id!));
-    try {
-      const imageUrl = await RecipeService.generateImage(recipe.title);
-
-      // Update recipe with new image
-      const updatedRecipe = { ...recipe, imageUrl };
-      await RecipeService.updateRecipe(updatedRecipe);
-
-      // Refresh meal plans to show new image
-      loadData(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.error('Image generation failed:', error);
-      showAlert({
-        title: 'Failed',
-        message: 'Could not generate image. Please try again.',
-        type: 'destructive',
-        icon: <Danger size={32} color="#EF4444" variant="Bold" />,
-      });
-    } finally {
-      setGeneratingImages((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(recipe.id!);
-        return newSet;
-      });
-    }
-  };
 
   const renderMealSection = (type: string, emoji: string, title: string) => {
     const dateStr = formatDate(selectedDate);
@@ -621,7 +720,7 @@ function MealPlannerContent() {
             return (
               <View key={item.id} className="relative mx-4 mb-3">
                 <Pressable
-                  onPress={() => handleMealPress(item.recipe)}
+                  onPress={() => handleMealPress(item)}
                   className="overflow-hidden rounded-2xl bg-white shadow-md"
                   style={({ pressed }) => [
                     {
@@ -698,56 +797,10 @@ function MealPlannerContent() {
                             </Text>
                           )}
                         </View>
-                        {/* Spacer for floating buttons */}
-                        <View style={{ width: 70 }} />
                       </View>
 
                       {/* Meta Info */}
                       <View className="mt-auto">
-                        {/* Type/Collections */}
-                        {item.recipe.collections && item.recipe.collections.length > 0 && (
-                          <View className="mb-1.5 flex-row flex-wrap">
-                            {item.recipe.collections.slice(0, 3).map((tag, idx) => (
-                              <View
-                                key={idx}
-                                className="mb-1 mr-1.5 rounded-md bg-gray-100 px-1.5 py-0.5"
-                              >
-                                <Text className="font-visby text-[10px] uppercase tracking-wide text-gray-500">
-                                  {tag}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
-                        )}
-
-                        {/* Pantry Availability Indicator */}
-                        {(() => {
-                          const totalIngredients = item.recipe.ingredients?.length || 0;
-                          const availableInPantry =
-                            item.recipe.ingredients?.filter((ing) => {
-                              const lowerIng = ing.item?.toLowerCase().trim() || '';
-                              return pantryItems.some(
-                                (pantryItem) =>
-                                  pantryItem.ingredient_name.toLowerCase().includes(lowerIng) ||
-                                  lowerIng.includes(pantryItem.ingredient_name.toLowerCase()),
-                              );
-                            }).length || 0;
-
-                          if (totalIngredients > 0 && availableInPantry > 0) {
-                            return (
-                              <View className="mb-1.5 flex-row items-center">
-                                <View className="flex-row items-center rounded-full bg-green-50 px-2 py-0.5">
-                                  <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                                  <Text className="ml-1 font-visby-bold text-[10px] text-green-600">
-                                    {availableInPantry}/{totalIngredients} in pantry
-                                  </Text>
-                                </View>
-                              </View>
-                            );
-                          }
-                          return null;
-                        })()}
-
                         <View className="flex-row items-center justify-between">
                           <View className="flex-row items-center">
                             <View className="mr-3 flex-row items-center">
@@ -765,118 +818,28 @@ function MealPlannerContent() {
                                 className="ml-1 font-visby-bold text-xs"
                                 style={{ color: colors.accent }}
                               >
-                                {item.recipe.calories_per_serving || 200} cal{' '}
-                                <Text className="font-visby text-[10px] opacity-80">/ 1 srv</Text>
+                                {item.recipe.calories_per_serving || 0} cal
                               </Text>
                             </View>
                           </View>
-
-                          {/* Yield/Difficulty */}
-                          {item.recipe.difficulty && (
-                            <View className={`rounded-full px-2 py-0.5 ${colors.bg}`}>
-                              <Text
-                                className="font-visby text-[10px]"
-                                style={{ color: colors.accent }}
-                              >
-                                {item.recipe.difficulty}
-                              </Text>
-                            </View>
-                          )}
                         </View>
                       </View>
                     </View>
                   </View>
                 </Pressable>
-
-                {/* Floating Action Buttons - Outside Pressable */}
-                <View className="absolute right-3 top-3 flex-row gap-1" style={{ zIndex: 999 }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      console.log('Cart button pressed for:', item.recipe.title);
-
-                      const ingredients = item.recipe.ingredients || [];
-
-                      // Check if recipe has no ingredients
-                      if (ingredients.length === 0) {
-                        showAlert({
-                          title: 'Recipe Incomplete',
-                          message:
-                            'This recipe has no ingredients yet. Please complete the recipe details first.',
-                          icon: <Danger size={32} color="#F59E0B" variant="Bold" />,
-                          type: 'default',
-                        });
-                        return;
-                      }
-
-                      const ingredientsToAdd = ingredients
-                        .map((ing) => ({
-                          name: ing.item,
-                          quantity: ing.quantity,
-                          unit: ing.unit,
-                        }))
-                        .filter((ing) => {
-                          const lowerIng = ing.name.toLowerCase().trim();
-                          return !pantryItems.some(
-                            (pantryItem) =>
-                              pantryItem.ingredient_name.toLowerCase().includes(lowerIng) ||
-                              lowerIng.includes(pantryItem.ingredient_name.toLowerCase()),
-                          );
-                        });
-
-                      if (ingredientsToAdd.length > 0) {
-                        const normalizedIngredients = ingredientsToAdd.map((ing) => ({
-                          name: ing.name,
-                          quantity:
-                            typeof ing.quantity === 'string'
-                              ? parseFloat(ing.quantity) || undefined
-                              : ing.quantity,
-                          unit: ing.unit,
-                        }));
-                        addToShoppingList(normalizedIngredients, item.recipe.title);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        showAlert({
-                          title: 'Added! 🛒',
-                          message: `${ingredientsToAdd.length} ingredients from "${item.recipe.title}" added to shopping list.`,
-                          icon: <ShoppingCart size={32} color="#3B82F6" variant="Bold" />,
-                          type: 'default',
-                        });
-                      } else {
-                        showAlert({
-                          title: 'All Set!',
-                          message: 'All ingredients are already in your pantry.',
-                          icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
-                          type: 'default',
-                        });
-                      }
-                    }}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    className="rounded-full bg-blue-50 p-1.5 shadow-sm"
-                    style={{
-                      elevation: 10,
-                      shadowColor: '#3B82F6',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4,
-                    }}
-                  >
-                    <Ionicons name="cart-outline" size={14} color="#3B82F6" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleDeleteMeal(item.id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    className="rounded-full bg-gray-100 p-1.5 shadow-sm"
-                    style={{
-                      elevation: 10,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                    }}
-                  >
-                    <Ionicons name="close" size={14} color="#999" />
-                  </TouchableOpacity>
-                </View>
+              
+                {/* Floating Delete Button */}
+                 <View className="absolute right-3 top-3 flex-row gap-1" style={{ zIndex: 999 }}>
+                   <TouchableOpacity
+                     onPress={() => handleDeleteMeal(item.id)}
+                     className="rounded-full bg-gray-100 p-1.5 shadow-sm"
+                     style={{
+                        backgroundColor: '#F3F4F6'
+                     }}
+                   >
+                     <Ionicons name="close" size={14} color="#999" />
+                   </TouchableOpacity>
+                 </View>
               </View>
             );
           })

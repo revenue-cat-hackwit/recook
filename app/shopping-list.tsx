@@ -446,6 +446,7 @@ export default function ShoppingListScreen() {
                     selectedRecipe === recipeName ? 'text-white' : 'text-gray-600'
                   }`}
                   numberOfLines={1}
+                  style={{ maxWidth: 220 }}
                 >
                   {recipeName} ({count})
                 </Text>

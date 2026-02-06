@@ -3,6 +3,7 @@ import { TouchableOpacity, Text, View } from 'react-native';
 import { Diamonds, TickCircle } from 'iconsax-react-native';
 import RevenueCatUI from 'react-native-purchases-ui';
 import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
+import { showAlert } from '@/lib/utils/globalAlert';
 
 interface ProButtonProps {
   onPress?: () => void;
@@ -25,6 +26,13 @@ export const ProButton: React.FC<ProButtonProps> = ({ onPress }) => {
         paywallResult === RevenueCatUI.PAYWALL_RESULT.RESTORED
       ) {
         await initialize(); // Refresh global state if purchase happens
+        
+        showAlert(
+           "Welcome to Recook Pro! 🌟",
+           "You now have unlimited access.",
+           undefined,
+           { icon: <TickCircle size={32} color="#10B981" variant="Bold" /> }
+        );
       }
     } catch (error) {
       console.error('Error in ProButton handlePress:', error);

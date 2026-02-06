@@ -73,6 +73,8 @@ export interface SubscriptionState {
   restorePurchases: () => Promise<boolean>;
   checkCanGenerate: () => boolean;
   incrementUsage: () => void;
+  reset: () => Promise<void>;
+  identifyUser: (userId: string) => Promise<void>;
 }
 
 export interface FeedItem {

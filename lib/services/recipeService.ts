@@ -339,4 +339,40 @@ export const RecipeService = {
       throw new Error('Could not parse nutrition data');
     }
   },
+  async findRecipeByTitle(title: string): Promise<Recipe | null> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return null;
+
+    const { data, error } = await supabase
+      .from('user_recipes')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .ilike('title', title)
+      .limit(1)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+       console.error("Error checking dupe:", error);
+       return null;
+    }
+    if (!data) return null;
+    
+    // Map to Recipe
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      ingredients: data.ingredients,
+      steps: data.steps,
+      time_minutes: data.time_minutes,
+      difficulty: data.difficulty,
+      servings: data.servings,
+      calories_per_serving: data.calories_per_serving,
+      tips: data.tips,
+      sourceUrl: data.source_url,
+      imageUrl: data.image_url,
+      createdAt: data.created_at,
+      collections: data.collections || [],
+    };
+  },
 };

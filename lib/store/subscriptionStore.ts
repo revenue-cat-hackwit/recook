@@ -37,9 +37,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           }
 
           // Check Entitlements
+          console.log('💰 [Store] Checking Entitlements against ID:', ENTITLEMENT_ID);
           let isPro = false;
           if (customerInfo && customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+            console.log('✅ [Store] User HAS active entitlement!');
             isPro = true;
+          } else {
+            console.log('❌ [Store] User DOES NOT have active entitlement.');
+            if (customerInfo) {
+               console.log('💰 [Store] Available Entitlements:', Object.keys(customerInfo.entitlements.active));
+            }
           }
 
           // Date Reset Logic
@@ -140,6 +147,54 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           generatedToday: generatedToday + 1,
           lastGeneratedDate: today,
         });
+      },
+
+      reset: async () => {
+        try {
+          // Check if anonymous to avoid error "Called logOut but the current user is anonymous"
+          const isAnon = await Purchases.isAnonymous();
+          if (!isAnon) {
+            await Purchases.logOut();
+            console.log('✅ [Store] RevenueCat Logged Out');
+          } else {
+            console.log('ℹ️ [Store] User is already anonymous, skipping RC logout.');
+          }
+        } catch (e: any) {
+          // Suppress specific anonymous error if it leaks through
+          if (e.message && e.message.includes('anonymous')) {
+             console.log('ℹ️ [Store] RC Logout skipped (User was anonymous).');
+          } else {
+             console.warn('⚠️ [Store] RevenueCat Logout Error:', e);
+          }
+        }
+        
+        // Reset state
+        set({
+          isPro: false,
+          currentCustomerInfo: null,
+          generatedToday: 0,
+          lastGeneratedDate: null,
+          loading: false,
+        });
+      },
+
+      identifyUser: async (userId: string) => {
+        set({ loading: true });
+        try {
+          const { customerInfo } = await Purchases.logIn(userId);
+          console.log(`✅ [Store] User Identified: ${userId}`);
+          
+          const isPro = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+          
+          set({
+            currentCustomerInfo: customerInfo,
+            isPro,
+            loading: false
+          });
+        } catch (e) {
+          console.error('RC Identify Error:', e);
+          set({ loading: false });
+        }
       },
     }),
     {

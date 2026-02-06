@@ -62,7 +62,11 @@ const formatDate = (dateString: string): string => {
   }
 };
 
+
 type TabType = 'My Posts' | 'Reply';
+
+// ManageSubscriptionButton removed
+
 
 export default function Profile() {
   const router = useRouter();
@@ -315,6 +319,8 @@ export default function Profile() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Manage Subscription moved to Settings */}
 
           {/* Profile Info */}
           <View className="mb-6 items-center">

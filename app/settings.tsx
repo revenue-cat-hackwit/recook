@@ -14,12 +14,24 @@ import { PersonalizationService } from '@/lib/services/personalizationService';
 import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger, Trash, TickCircle } from 'iconsax-react-native';
 import * as Haptics from 'expo-haptics';
+import Purchases from 'react-native-purchases';
+import { Platform, Linking } from 'react-native';
+import { useSubscriptionStore } from '@/lib/store/subscriptionStore';
+import { Setting2 } from 'iconsax-react-native';
 
 const ALLERGIES_OPT = ['Peanuts', 'Seafood', 'Dairy', 'Gluten', 'Eggs', 'Soy'];
 const EQUIPMENT_OPT = ['Oven', 'Blender', 'Air Fryer', 'Microwave', 'Mixer'];
 
+
+
+/* End of Personalization Section Definitions */
+
+/* Helper components above */
+
+/* Main Component */
 const PersonalizationSection = () => {
   const { preferences, toggleAllergy, toggleEquipment, toggleCuisine, toggleTastePreference } = usePreferencesStore();
+
   const [newCuisine, setNewCuisine] = useState('');
   const [newTaste, setNewTaste] = useState('');
   const [newAllergy, setNewAllergy] = useState('');
@@ -380,7 +392,12 @@ export default function SettingsScreen() {
 
   const confirmSignOut = async () => {
     try {
+      // 1. Reset Subscription Store (RevenueCat Logout & Clear State)
+      await useSubscriptionStore.getState().reset();
+      
+      // 2. Sign Out Auth
       await useAuthStore.getState().signOut();
+      
       setSignOutAlertVisible(false);
       
       // Reset navigation history to prevent going back

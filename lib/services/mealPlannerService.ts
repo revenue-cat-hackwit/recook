@@ -47,22 +47,43 @@ export const MealPlannerService = {
 
     // Map Join Result to Type
     return data.map((item: any) => {
-      const rawRecipe = item.recipe || {};
-      const mappedRecipe: Recipe = {
-        id: rawRecipe.id,
-        title: rawRecipe.title || 'Unknown Recipe',
-        ingredients: rawRecipe.ingredients || [],
-        steps: rawRecipe.steps || [],
-        imageUrl: rawRecipe.image_url, // Map to Type
-        time_minutes: rawRecipe.time_minutes,
-        calories_per_serving: rawRecipe.calories_per_serving,
-        description: rawRecipe.description,
-        difficulty: rawRecipe.difficulty,
-        servings: rawRecipe.servings,
-        tips: rawRecipe.tips,
-        sourceUrl: rawRecipe.source_url,
-        collections: rawRecipe.collections || [],
-      };
+      const rawRecipe = item.recipe; // Can be null now
+      let mappedRecipe: Recipe;
+
+      if (rawRecipe) {
+        // Real Recipe from DB
+        mappedRecipe = {
+          id: rawRecipe.id,
+          title: rawRecipe.title || 'Unknown Recipe',
+          ingredients: rawRecipe.ingredients || [],
+          steps: rawRecipe.steps || [],
+          imageUrl: rawRecipe.image_url,
+          time_minutes: rawRecipe.time_minutes,
+          calories_per_serving: rawRecipe.calories_per_serving,
+          description: rawRecipe.description,
+          difficulty: rawRecipe.difficulty,
+          servings: rawRecipe.servings,
+          tips: rawRecipe.tips,
+          sourceUrl: rawRecipe.source_url,
+          collections: rawRecipe.collections || [],
+        };
+      } else {
+        // Idea / Placeholder (No Recipe ID linked)
+        // We construct a "Virtual Recipe" so the UI doesn't break
+        mappedRecipe = {
+          id: `idea-${item.id}`, // Virtual ID to prevent key errors
+          title: item.idea_title || 'New Meal Idea',
+          description: item.idea_description || 'Tap to generate full recipe',
+          ingredients: [], // Empty ingredients triggers "Generate" logic in UI
+          steps: [],
+          imageUrl: item.idea_image_url || null,
+          time_minutes: '0',
+          calories_per_serving: 'Unknown',
+          difficulty: 'Easy',
+          servings: '1',
+          collections: [],
+        };
+      }
 
       return {
         ...item,
@@ -99,6 +120,22 @@ export const MealPlannerService = {
    */
   async deleteMealPlan(id: string): Promise<void> {
     const { error } = await supabase.from('meal_plans').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  /**
+   * Update a meal plan to link to a real recipe (converting idea to recipe)
+   */
+  async updateMealPlanRecipe(planId: string, recipeId: string): Promise<void> {
+    const { error } = await supabase
+      .from('meal_plans')
+      .update({ 
+        recipe_id: recipeId,
+        idea_title: null, // Clear idea fields
+        idea_description: null 
+      })
+      .eq('id', planId);
+
     if (error) throw error;
   },
 
@@ -171,6 +208,7 @@ export const MealPlannerService = {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
           apikey: supabaseAnonKey,
+          'X-Custom-Auth': token,
         },
         body: JSON.stringify({
           startDate,

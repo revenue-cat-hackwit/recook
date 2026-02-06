@@ -50,7 +50,7 @@ export const SPEEDS = [
 ];
 
 // --- REVENUECAT CONSTANTS ---
-export const ENTITLEMENT_ID = 'Recook Pro';
+export const ENTITLEMENT_ID = 'pirinku Pro';
 
 export const REVENUECAT_API_KEYS = {
   apple: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY!,

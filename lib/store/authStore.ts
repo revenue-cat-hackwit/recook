@@ -6,6 +6,7 @@ import { PersonalizationService } from '../services/personalizationService';
 import { TokenStorage } from '../services/apiClient';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { AuthUser } from '@/lib/types/auth';
+import { useSubscriptionStore } from './subscriptionStore';
 
 interface AuthState {
   token: string | null;
@@ -67,6 +68,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         token: response.data.token,
         user: response.data.user
       });
+      
+      // Identify to RevenueCat
+      if (response.data.user?.id) {
+          useSubscriptionStore.getState().identifyUser(response.data.user.id).catch(err => console.warn("RC Ident error", err));
+      }
 
       // Check personalization status after successful login
       try {
@@ -110,6 +116,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         token: response.data.token,
         user: response.data.user
       });
+
+      // Identify to RevenueCat
+      if (response.data.user?.id) {
+          useSubscriptionStore.getState().identifyUser(response.data.user.id).catch(err => console.warn("RC Ident error", err));
+      }
 
       // Check personalization status after successful verification
       try {
@@ -195,6 +206,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
         set({ token, user });
         console.log('✅ [AuthStore] User state updated successfully');
+
+        // Identify to RevenueCat
+        if (user?.id) {
+             useSubscriptionStore.getState().identifyUser(user.id).catch(err => console.warn("RC Ident error", err));
+        }
 
         // Check personalization status after successful Google sign-in
         try {
