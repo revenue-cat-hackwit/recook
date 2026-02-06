@@ -80,11 +80,11 @@ export const NutritionAnalyzerService = {
     const filePath = `${userData.user.id}/${fileName}`;
 
     const response = await fetch(imageUri);
-    const blob = await response.blob();
+    const arrayBuffer = await response.arrayBuffer();
 
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('food-images')
-      .upload(filePath, blob, {
+      .from('videos')
+      .upload(filePath, arrayBuffer, {
         contentType: 'image/jpeg',
         upsert: false,
       });
@@ -96,7 +96,7 @@ export const NutritionAnalyzerService = {
 
     // Get public URL
     const { data: urlData } = supabase.storage
-      .from('food-images')
+      .from('videos')
       .getPublicUrl(filePath);
 
     const publicUrl = urlData.publicUrl;
@@ -140,6 +140,85 @@ export const NutritionAnalyzerService = {
     }
 
     return recommendations;
+  },
+  /**
+   * Analyze nutrition from a Recipe object using AI text analysis
+   */
+  async analyzeRecipe(recipe: any): Promise<NutritionInfo> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error('User not authenticated');
+
+    const ingredientsList = recipe.ingredients
+      .map((i: any) => `- ${i.quantity} ${i.unit} ${i.item}`)
+      .join('\n');
+
+    const prompt = `
+      Please analyze the nutrition for this recipe:
+      Title: ${recipe.title}
+      Servings: ${recipe.servings}
+      Ingredients:
+      ${ingredientsList}
+
+      Provide a detailed nutritional analysis per serving.
+      
+      Return ONLY a valid JSON object matching this structure:
+      {
+        "foodName": "${recipe.title}",
+        "servingSize": "1 serving",
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fat": 0,
+        "fiber": 0,
+        "sugar": 0,
+        "sodium": 0,
+        "confidence": 0.9,
+        "healthScore": 0,
+        "dietaryFlags": ["Gluten-Free", "Vegan", etc],
+        "warnings": ["High Sodium", etc]
+      }
+      
+      Rules:
+      - Calculate values based on ingredients and servings.
+      - Health Score is 0-100 based on overall nutritional balance.
+      - Do not include markdown formatting like \`\`\`json.
+    `;
+
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/ai-assistant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 500,
+          temperature: 0.1,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze recipe nutrition');
+      }
+
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+
+      // Parse JSON
+      let content = data.data.message.trim();
+      if (content.startsWith('```json')) {
+        content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (content.startsWith('```')) {
+        content = content.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      const result = JSON.parse(content);
+      return result as NutritionInfo;
+    } catch (error: any) {
+      console.error('Recipe Analysis Error:', error);
+      throw new Error('Failed to analyze recipe. Please try again.');
+    }
   },
 };
 

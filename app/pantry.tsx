@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Container } from '@/components/Container';
 import * as ImagePicker from 'expo-image-picker';
 import { PantryService, PantryItem } from '@/lib/services/pantryService';
@@ -21,6 +22,7 @@ import { RecipeDetailModal } from '@/components/recipes/RecipeDetailModal';
 import { LoadingModal } from '@/components/LoadingModal';
 import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger, TickCircle, MagicStar } from 'iconsax-react-native';
+import { useColorScheme } from 'nativewind';
 
 const CATEGORIES = ['Dairy', 'Vegetable', 'Fruit', 'Meat', 'Grain', 'Spice', 'Other'];
 
@@ -51,6 +53,8 @@ export default function PantryScreen() {
   const [recommendations, setRecommendations] = useState<RecipeWithPantryMatch[]>([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeWithPantryMatch | null>(null);
+
+  const insets = useSafeAreaInsets();
 
   const loadPantry = useCallback(async () => {
     try {
@@ -239,6 +243,7 @@ export default function PantryScreen() {
   };
 
   const handleGetRecommendations = async () => {
+    console.log('🔘 Recipe Ideas button clicked');
     if (items.length === 0) {
       showAlert(
         'Pantry Empty',
@@ -289,32 +294,37 @@ export default function PantryScreen() {
     }
   };
 
+  const { colorScheme } = useColorScheme();
+
   const renderItem = (item: PantryItem) => {
     const daysLeft = getDaysUntilExpiry(item.expiry_date);
-    let expiryColor = 'text-gray-500';
+    let expiryColor = 'text-gray-500 dark:text-gray-400';
     let expiryText = daysLeft ? `${daysLeft} days left` : 'No expiry';
-    let bgClass = 'bg-white border-gray-100';
+    let bgClass = 'bg-white border-gray-100 dark:bg-[#1A1A1A] dark:border-gray-800';
+    let iconBg = 'bg-gray-50 dark:bg-gray-800';
 
     if (daysLeft !== null) {
       if (daysLeft < 0) {
         expiryColor = 'text-red-500 font-visby-bold';
         expiryText = 'Expired';
-        bgClass = 'bg-red-50 border-red-100';
+        bgClass = 'bg-red-50 border-red-100 dark:bg-red-900/10 dark:border-red-900/20';
+        iconBg = 'bg-red-100 dark:bg-red-900/20';
       } else if (daysLeft <= 3) {
         expiryColor = 'text-orange-500 font-visby-bold';
         expiryText = `Expiring soon (${daysLeft}d)`;
-        bgClass = 'bg-orange-50 border-orange-100';
+        bgClass = 'bg-orange-50 border-orange-100 dark:bg-orange-900/10 dark:border-orange-900/20';
+        iconBg = 'bg-orange-100 dark:bg-orange-900/20';
       }
     }
 
     return (
       <View
         key={item.id}
-        className={`mb-3 flex-row items-center justify-between rounded-xl border p-4 shadow-sm ${bgClass}`}
+        className={`mb-3 flex-row items-center justify-between rounded-2xl border p-4 shadow-sm ${bgClass}`}
       >
         <View className="flex-1 flex-row items-center">
-          <View className={`mr-3 h-10 w-10 items-center justify-center rounded-full bg-white`}>
-            <Text className="text-lg">
+          <View className={`mr-4 h-12 w-12 items-center justify-center rounded-full ${iconBg}`}>
+            <Text className="text-2xl">
               {item.category === 'Dairy'
                 ? '🥛'
                 : item.category === 'Vegetable'
@@ -327,17 +337,20 @@ export default function PantryScreen() {
             </Text>
           </View>
           <View>
-            <Text className="font-visby-bold text-gray-900">{item.ingredient_name}</Text>
-            <Text className="text-xs text-gray-500">
+            <Text className="font-visby-bold text-base text-gray-900 dark:text-gray-100">{item.ingredient_name}</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
               {item.quantity} • {item.category}
             </Text>
           </View>
         </View>
 
         <View className="items-end">
-          <Text className={`font-visby text-xs ${expiryColor} mb-1`}>{expiryText}</Text>
-          <TouchableOpacity onPress={() => handleDelete(item.id)}>
-            <Ionicons name="trash-outline" size={18} color="#999" />
+          <Text className={`font-visby text-xs ${expiryColor} mb-2`}>{expiryText}</Text>
+          <TouchableOpacity 
+            onPress={() => handleDelete(item.id)}
+            className="rounded-full bg-gray-100 p-2 dark:bg-gray-800"
+          >
+            <Ionicons name="trash-outline" size={16} color={colorScheme === 'dark' ? '#9CA3AF' : '#6B7280'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -345,12 +358,12 @@ export default function PantryScreen() {
   };
 
   return (
-    <Container className="bg-[#F9FAFB]" noPadding>
-      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-5 py-4">
+    <Container className="bg-[#F9FAFB] dark:bg-[#0F0F0F]" noPadding>
+      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#0F0F0F]">
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
+          <Ionicons name="arrow-back" size={24} color={insets.top ? (colorScheme === 'dark' ? 'white' : 'black') : 'black'} />
         </TouchableOpacity>
-        <Text className="font-visby-bold text-xl text-gray-900">My Pantry 🍎</Text>
+        <Text className="font-visby-bold text-xl text-gray-900 dark:text-white">My Pantry 🍎</Text>
         <TouchableOpacity onPress={() => setIsModalOpen(true)}>
           <Ionicons name="add-circle" size={28} color="#8BD65E" />
         </TouchableOpacity>
@@ -358,40 +371,44 @@ export default function PantryScreen() {
 
       <ScrollView
         className="flex-1 px-5 pt-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8BD65E"/>}
       >
         {/* Kitchen Tools Section */}
         {items.length > 0 && (
-          <View className="mb-4">
-            <Text className="mb-3 font-visby-bold text-sm text-gray-500">Kitchen Tools 🔧</Text>
+          <View className="mb-6">
+            <Text className="mb-3 font-visby-bold text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Kitchen Tools</Text>
             <View className="flex-row gap-3">
               {/* AI Recipe Recommendations Button */}
               <TouchableOpacity
                 onPress={handleGetRecommendations}
                 disabled={loadingRecommendations}
-                className="flex-1 flex-row items-center justify-center rounded-2xl bg-purple-500 py-3 shadow-sm"
-                style={{
-                  backgroundColor: loadingRecommendations ? '#D1D5DB' : '#8B5CF6',
-                }}
+                className="flex-1 overflow-hidden"
               >
-                {loadingRecommendations ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <>
-                    <MagicStar size={20} color="white" variant="Bold" />
-                    <Text className="ml-2 font-visby-bold text-sm text-white">
-                      Recipe Ideas
-                    </Text>
-                  </>
-                )}
+                <View 
+                  className="flex-1 flex-row items-center justify-center rounded-2xl py-4 shadow-sm active:scale-95"
+                  style={{
+                    backgroundColor: loadingRecommendations ? '#E5E7EB' : '#8B5CF6',
+                  }}
+                >
+                  {loadingRecommendations ? (
+                    <ActivityIndicator color="#6B7280" size="small" />
+                  ) : (
+                    <>
+                      <MagicStar size={22} color="white" variant="Bold" />
+                      <Text className="ml-2 font-visby-bold text-sm text-white">
+                        Recipe Ideas
+                      </Text>
+                    </>
+                  )}
+                </View>
               </TouchableOpacity>
 
               {/* Nutrition Analyzer Button */}
               <TouchableOpacity
                 onPress={() => router.push('/nutrition-analyzer')}
-                className="flex-1 flex-row items-center justify-center rounded-2xl bg-blue-500 py-3 shadow-sm"
+                className="flex-1 flex-row items-center justify-center rounded-2xl bg-blue-500 py-4 shadow-sm active:scale-95"
               >
-                <Ionicons name="fitness" size={20} color="white" />
+                <Ionicons name="fitness" size={22} color="white" />
                 <Text className="ml-2 font-visby-bold text-sm text-white">
                   Nutrition Scan
                 </Text>
@@ -410,35 +427,45 @@ export default function PantryScreen() {
             {/* Expiring Soon Section if any */}
             {items.some((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3) && (
               <View className="mb-6">
-                <Text className="mb-2 font-visby-bold text-red-500">⚠️ Expiring Soon</Text>
+                <View className="mb-2 flex-row items-center gap-2">
+                  <View className="h-2 w-2 rounded-full bg-red-500"/>
+                  <Text className="font-visby-bold text-sm text-red-500">Expiring Soon</Text>
+                </View>
                 {items
                   .filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) <= 3)
                   .map(renderItem)}
               </View>
             )}
 
-            <Text className="mb-3 font-visby-bold text-gray-800">Inventory ({items.length})</Text>
-            {items.filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) > 3).map(renderItem)}
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="font-visby-bold text-lg text-gray-900 dark:text-white">Inventory ({items.length})</Text>
+            </View>
+            
+            <View className="pb-8">
+              {items.filter((i) => (getDaysUntilExpiry(i.expiry_date) || 100) > 3).map(renderItem)}
+            </View>
           </>
         ) : (
           /* SINGLE UNIFIED EMPTY STATE */
           <View className="mt-10 flex-1 items-center justify-center px-4">
-            <View className="mb-6 h-32 w-32 items-center justify-center rounded-[40px] bg-green-50 shadow-sm">
-              <Ionicons name="camera" size={56} color="#8BD65E" />
+            <View className="mb-8 h-40 w-40 items-center justify-center rounded-full bg-green-50 shadow-inner dark:bg-green-900/20">
+              <View className="h-32 w-32 items-center justify-center rounded-full bg-white shadow-sm dark:bg-[#1A1A1A]">
+                 <Ionicons name="basket" size={64} color="#8BD65E" />
+              </View>
             </View>
 
-            <Text className="mb-2 text-center font-visby-bold text-2xl text-gray-900">
+            <Text className="mb-3 text-center font-visby-bold text-2xl text-gray-900 dark:text-white">
               Your Pantry is Empty
             </Text>
 
-            <Text className="mb-8 w-3/4 text-center font-visby text-base leading-6 text-gray-400">
+            <Text className="mb-10 w-4/5 text-center font-visby text-base leading-6 text-gray-500 dark:text-gray-400">
               Start by scanning your fridge or receipt to instantly add ingredients!
             </Text>
 
             <TouchableOpacity
               onPress={handleCameraScan}
               disabled={analyzing}
-              className="w-full flex-row items-center justify-center rounded-3xl bg-[#8BD65E] py-4 shadow-lg shadow-green-200 active:scale-95"
+              className="w-full flex-row items-center justify-center rounded-3xl bg-[#8BD65E] py-4 shadow-lg shadow-green-200 active:scale-95 dark:shadow-none"
             >
               {analyzing ? (
                 <ActivityIndicator color="white" />
@@ -450,8 +477,8 @@ export default function PantryScreen() {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setIsModalOpen(true)} className="mt-4 py-2">
-              <Text className="font-visby-bold text-gray-400">Add Manually</Text>
+            <TouchableOpacity onPress={() => setIsModalOpen(true)} className="mt-6 py-2">
+              <Text className="font-visby-bold text-gray-500 dark:text-gray-400">Add Item Manually</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -464,8 +491,9 @@ export default function PantryScreen() {
         <TouchableOpacity
           onPress={handleCameraScan}
           disabled={analyzing}
-          className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full shadow-xl"
+          className="absolute right-6 h-16 w-16 items-center justify-center rounded-full shadow-xl"
           style={{
+            bottom: 24 + insets.bottom,
             backgroundColor: '#8BD65E',
             shadowColor: '#8BD65E',
             shadowOpacity: 0.4,
@@ -664,7 +692,10 @@ export default function PantryScreen() {
             </View>
           </ScrollView>
 
-          <View className="border-t border-gray-100 bg-white px-6 py-4">
+          <View
+            className="border-t border-gray-100 bg-white px-6 pt-4"
+            style={{ paddingBottom: insets.bottom + 16 }}
+          >
             <TouchableOpacity
               onPress={handleSaveScannedItems}
               disabled={scannedItems.length === 0}

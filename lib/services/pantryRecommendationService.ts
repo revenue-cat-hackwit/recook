@@ -1,6 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Recipe, Ingredient } from '@/lib/types';
 import { RecipeService } from './recipeService';
+import { AuthApiService } from './authApiService';
 
 export interface PantryRecommendationParams {
   pantryItems: string[];
@@ -68,7 +69,6 @@ export const PantryRecommendationService = {
       // Fetch personalization data first
       let customPreferences = {};
       try {
-        const { AuthApiService } = await import('./authApiService');
         const personalRes = await AuthApiService.getPersonalization();
         if (personalRes?.data?.personalization) {
            customPreferences = personalRes.data.personalization;

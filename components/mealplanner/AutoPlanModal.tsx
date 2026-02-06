@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'nativewind';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AutoPlanModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
 }) => {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
 
   const [goal, setGoal] = useState('Healthy Balanced');
   const [dietType, setDietType] = useState('No Restrictions');
@@ -203,7 +205,10 @@ export const AutoPlanModal: React.FC<AutoPlanModalProps> = ({
               </ScrollView>
 
               {/* Footer */}
-              <View className="border-t border-gray-100 p-6 dark:border-gray-800">
+              <View 
+                className="border-t border-gray-100 p-6 dark:border-gray-800"
+                style={{ paddingBottom: Math.max(insets.bottom, 24) }}
+              >
                 <TouchableOpacity
                   onPress={handleSubmit}
                   disabled={isLoading}

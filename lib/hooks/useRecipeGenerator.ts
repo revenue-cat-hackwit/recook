@@ -355,15 +355,15 @@ export const useRecipeGenerator = ({
       };
 
       console.log('🔥 Saving recipe to storage...');
-      // 4. Save/Update (Cloud)
-      await saveRecipe(updatedRecipe);
-      setCurrentRecipe(updatedRecipe);
+      // 4. Save/Update (Cloud) - and get the REAL ID
+      const savedRealRecipe = await saveRecipe(updatedRecipe);
+      setCurrentRecipe(savedRealRecipe);
 
       // 5. Increment Usage
       incrementUsage();
 
-      console.log('🔥 Recipe completed successfully');
-      return { success: true, data: updatedRecipe };
+      console.log('🔥 Recipe completed successfully. Real ID:', savedRealRecipe.id);
+      return { success: true, data: savedRealRecipe };
     } catch (err: any) {
       console.error('🔥 Complete Recipe Error:', err);
       console.error('🔥 Error message:', err?.message);

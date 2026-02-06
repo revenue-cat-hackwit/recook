@@ -549,7 +549,7 @@ const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
         console.log('🍳 completeRecipe result:', result);
 
         // Check if quota exceeded
-        if (result && !result.success && result.needsPaywall) {
+        if (result && !result.success && (result as any).needsPaywall) {
            console.log('🍳 Quota exceeded');
            showAlert({
             title: 'Daily Limit Reached 🍳',
@@ -564,12 +564,12 @@ const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
           return;
         }
 
-        if (result && result.success && result.data) {
-          const generatedContent = result.data;
+        if (result && result.success && (result as any).data) {
+          const generatedContent = (result as any).data;
           console.log('🍳 Generated Content Ready.');
 
           let savedRealRecipe;
-          
+
           // 2a. CHECK FOR DUPLICATES: Don't create spam if title exists
           // Use the title from the generated content (likely cleaner) or the original idea title
           const targetTitle = generatedContent.title || recipe.title;
@@ -578,27 +578,47 @@ const handleUpdateRecipe = async (updatedRecipe: Recipe) => {
           const existingDuplicate = await RecipeService.findRecipeByTitle(targetTitle);
 
           if (existingDuplicate && existingDuplicate.id) {
-             console.log(`🍳 Found existing recipe [${existingDuplicate.id}]. Updating it instead of creating new.`);
+             console.log(`🍳 Found existing recipe [${existingDuplicate.id}]. Checking ID validity...`);
              
-             // Update the existing recipe with the new AI content
-             const recipeToUpdate = {
-                ...existingDuplicate, // Keep old ID, creator info, etc.
-                ...generatedContent,  // Overwrite ingredients, steps, etc.
-                imageUrl: existingDuplicate.imageUrl || generatedContent.imageUrl // Prefer existing image if any, else new
-             };
-             
-             await RecipeService.updateRecipe(recipeToUpdate);
-             savedRealRecipe = recipeToUpdate;
+             // SAFETY CHECK: Ensure ID is not an "idea" ID (which causes crash)
+             if (String(existingDuplicate.id).startsWith('idea-')) {
+                 console.warn("🍳 Existing recipe has invalid ID (idea-...). Cannot update DB. Skipping update.");
+                 // Fallback: Treat as new generated content
+                 savedRealRecipe = generatedContent;
+             } else {
+                 // CLEANUP: Delete the "draft" recipe that completeRecipe just created
+                 if (generatedContent.id && generatedContent.id !== existingDuplicate.id && !String(generatedContent.id).startsWith('idea-')) {
+                     console.log(`🍳 Deleting temporary draft [${generatedContent.id}]...`);
+                     try {
+                        await RecipeService.deleteRecipe(generatedContent.id);
+                     } catch (delErr) {
+                        console.warn("Failed to delete draft recipe", delErr);
+                     }
+                 }
+
+                 // Update the existing recipe with the new AI content
+                 const recipeToUpdate = {
+                    ...existingDuplicate, 
+                    ...generatedContent,  
+                    id: existingDuplicate.id, // FORCE ID to be the existing one
+                    imageUrl: existingDuplicate.imageUrl || generatedContent.imageUrl
+                 };
+                 
+                 console.log(`🍳 Updating DB Recipe [${recipeToUpdate.id}]...`);
+                 try {
+                     await RecipeService.updateRecipe(recipeToUpdate);
+                     savedRealRecipe = recipeToUpdate;
+                 } catch (updateErr: any) {
+                     console.error("🍳 Update Failed:", updateErr);
+                     console.warn("Falling back to new duplicate due to update error.");
+                     // If update fails (e.g. UUID issue), use the one we just created
+                     savedRealRecipe = generatedContent;
+                 }
+             }
           } else {
-             // 2b. Create NEW Real Recipe
-             const recipeToSave = {
-                ...generatedContent,
-                id: undefined, // ensure creation
-             };
-             
-             console.log('🍳 Saving NEW real recipe to DB...');
-             const saveResult = await RecipeService.saveRecipe(recipeToSave);
-             savedRealRecipe = (saveResult as any).data || saveResult;
+             // 2b. Use the NEW Real Recipe (Already saved by completeRecipe)
+             console.log('🍳 No duplicate found. Using newly generated recipe.');
+             savedRealRecipe = generatedContent;
           }
           
           if (!savedRealRecipe || !savedRealRecipe.id) {

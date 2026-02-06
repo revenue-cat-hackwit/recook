@@ -10,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger, TickCircle, CloseCircle, Play, Camera, MagicStar, Gallery, Add, ShoppingCart, Trash, Apple, Lamp, FolderOpen, Share, Edit2, Clock, Flash, Profile2User, Calculator, PlayCircle } from 'iconsax-react-native';
+import { Danger, TickCircle, CloseCircle, Play, Camera, MagicStar, Gallery, Add, ShoppingCart, Trash, Apple, Lamp, FolderOpen, Share, Edit2, Clock, Flash, Profile2User, Calculator, PlayCircle, Health } from 'iconsax-react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -810,6 +810,25 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
                   <Text className="text-xs text-gray-400">Servings</Text>
                 </View>
               </View>
+
+              {/* Detailed Nutrition Analysis Button */}
+              {!isEditing && (
+                <TouchableOpacity
+                  onPress={() => {
+                    onClose();
+                    router.push({
+                      pathname: '/nutrition-analyzer',
+                      params: { recipeData: JSON.stringify(displayRecipe) },
+                    });
+                  }}
+                  className="mb-6 flex-row items-center justify-center rounded-xl bg-green-50 py-3 dark:bg-green-900/20"
+                >
+                  <Health size={20} color="#10B981" variant="Bold" />
+                  <Text className="ml-2 font-visby-bold text-sm text-green-600 dark:text-green-400">
+                    Analyze Full Nutrition
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Collections - Only show when editing existing recipes or viewing */}
               <View className="mb-6">

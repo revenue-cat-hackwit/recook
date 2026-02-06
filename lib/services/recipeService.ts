@@ -121,21 +121,32 @@ export const RecipeService = {
    * Step 2: Generate recipe from Processed Media Items
    * Now accepts an object with mediaItems or the old videoUrl for backward compat
    */
-  async generateFromVideo(
+    async generateFromVideo(
     input: { videoUrl?: string; mediaItems?: any[]; title?: string; description?: string },
     userPreferences?: any,
   ): Promise<Recipe> {
     try {
+      // Create a sanitized payload
+      const payload: any = {
+        ...input,
+        userPreferences: userPreferences,
+      };
+
+      // Workaround: The backend/AI provider seems to crash if 'videoUrl' is provided 
+      // alongside mediaItems or if it tries to use 'video_url' message type which is unsupported.
+      // If we have extracted mediaItems (images/text), we should rely on those and omit videoUrl
+      // to prevent the backend from attempting to format it incorrectly.
+      if (payload.mediaItems && payload.mediaItems.length > 0) {
+         delete payload.videoUrl;
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-recipe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${supabaseAnonKey}`,
         },
-        body: JSON.stringify({
-          ...input, // spreads mediaItems, videoUrl, title, description
-          userPreferences: userPreferences,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {

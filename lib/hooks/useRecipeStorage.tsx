@@ -102,6 +102,8 @@ export const useRecipeStorage = () => {
         AsyncStorage.setItem(RECIPES_STORAGE_KEY, JSON.stringify(updated));
         return updated;
       });
+
+      return savedInCloud;
     } catch (e) {
       console.error('Save recipe error', e);
       showAlert(
@@ -113,6 +115,7 @@ export const useRecipeStorage = () => {
           type: 'destructive',
         },
       );
+      return recipe;
     }
   };
 

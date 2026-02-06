@@ -18,13 +18,55 @@ import { Danger, TickCircle, Health, InfoCircle } from 'iconsax-react-native';
 
 import { useColorScheme } from 'nativewind';
 
+import { useLocalSearchParams } from 'expo-router';
+
 export default function NutritionAnalyzerScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
+  const params = useLocalSearchParams();
+  
   const [analyzing, setAnalyzing] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [nutrition, setNutrition] = useState<NutritionInfo | null>(null);
   const [isCameraVisible, setIsCameraVisible] = useState(false);
+
+  // Check for passed recipe
+  React.useEffect(() => {
+    if (params.recipeData) {
+      try {
+        const recipe = JSON.parse(params.recipeData as string);
+        analyzeRecipeData(recipe);
+      } catch (e) {
+        console.error('Failed to parse recipe data', e);
+      }
+    }
+  }, [params.recipeData]);
+
+  const analyzeRecipeData = async (recipe: any) => {
+    setAnalyzing(true);
+    setNutrition(null);
+    // Use recipe image if available, else placeholder
+    setImageUri(recipe.imageUrl || 'https://placehold.co/600x400/png?text=Recipe'); 
+
+    try {
+      const result = await NutritionAnalyzerService.analyzeRecipe(recipe);
+      setNutrition(result);
+      
+      showAlert(
+        'Analysis Complete! 🎉',
+        `Analyzed: ${result.foodName}`,
+        undefined,
+        {
+          icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
+        }
+      );
+    } catch (error: any) {
+      console.error('Analysis error:', error);
+      showAlert('Analysis Failed', error.message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleCameraCapture = async (uri: string) => {
     setImageUri(uri);
