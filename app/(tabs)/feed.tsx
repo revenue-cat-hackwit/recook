@@ -18,9 +18,11 @@ import { Notification, Setting2, Danger, DocumentText, Refresh, MagicStar, Add }
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ProButton } from '@/components/ProButton';
+import { useProfileStore } from '@/lib/store/profileStore';
 
 export default function Feed() {
   const router = useRouter();
+  const { triggerRefetch } = useProfileStore();
   const [posts, setPosts] = useState<Post[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,7 @@ export default function Feed() {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [createPostModalVisible, setCreatePostModalVisible] = useState(false);
+  const [commentAutoFocus, setCommentAutoFocus] = useState(false);
 
   const fetchFeeds = async (pageNum: number = 1, isRefresh: boolean = false) => {
     try {
@@ -101,6 +104,7 @@ export default function Feed() {
     // Call API
     try {
       await PostService.likePost(postId);
+      triggerRefetch();
     } catch (error) {
       // Rollback on error
       setPosts(previousPosts);
@@ -111,12 +115,14 @@ export default function Feed() {
 
   const handleComment = (postId: string) => {
     setSelectedPostId(postId);
+    setCommentAutoFocus(true);
     setCommentModalVisible(true);
   };
 
   const handleCommentAdded = () => {
     // Refresh the feed to get updated comment counts
     fetchFeeds(1, true);
+    triggerRefetch();
   };
 
   const handleCreatePost = async (content: string, imageUrl?: string) => {
@@ -124,6 +130,7 @@ export default function Feed() {
       await PostService.createPost(content, imageUrl);
       // Refresh the feed to show the new post
       fetchFeeds(1, true);
+      triggerRefetch();
     } catch (error) {
       console.error('Error creating post:', error);
       throw error;
@@ -131,8 +138,9 @@ export default function Feed() {
   };
 
   const handlePostPress = (postId: string) => {
-    // TODO: Navigate to post detail
-    console.log('Open post:', postId);
+    setSelectedPostId(postId);
+    setCommentAutoFocus(false);
+    setCommentModalVisible(true);
   };
 
   const handleGenerateRecipe = () => {
@@ -415,9 +423,11 @@ export default function Feed() {
         onClose={() => {
           setCommentModalVisible(false);
           setSelectedPostId(null);
+          setCommentAutoFocus(false);
         }}
         postId={selectedPostId}
         onCommentAdded={handleCommentAdded}
+        autoFocus={commentAutoFocus}
       />
 
       {/* Create Post Modal */}

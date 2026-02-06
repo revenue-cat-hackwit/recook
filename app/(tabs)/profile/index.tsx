@@ -16,7 +16,9 @@ import {
   View,
   ActivityIndicator,
   FlatList,
+  RefreshControl,
 } from 'react-native';
+import { useProfileStore } from '@/lib/store/profileStore';
 import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger } from 'iconsax-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,10 +70,12 @@ export default function Profile() {
   const currentUser = useAuthStore((state) => state.user);
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { shouldRefetch, markRefetched, triggerRefetch } = useProfileStore();
 
   // Profile Data from API
   const [profileData, setProfileData] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false); // Add refreshing state
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('My Posts');
@@ -86,34 +90,41 @@ export default function Profile() {
   const isFetchingRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (force = false) => {
     if (!token) return;
     
-    // Debounce: cegah fetch berulang dalam 2 detik
+    // Debounce: cegah fetch berulang dalam 2 detik, KECUALI force refresh
     const now = Date.now();
-    if (isFetchingRef.current || (now - lastFetchTimeRef.current < 2000)) {
+    if (!force && (isFetchingRef.current || (now - lastFetchTimeRef.current < 2000))) {
       return;
     }
 
     try {
       isFetchingRef.current = true;
       lastFetchTimeRef.current = now;
-      setLoading(true);
+      if (!force) setLoading(true); // Don't show full screen loader on pull-to-refresh
 
       // Fetch profile from new API
       const response = await ProfileService.getProfile();
       setProfileData(response.data.user);
+      markRefetched();
     } catch (error: any) {
       console.error('Failed to fetch profile:', error);
-      showAlert('Error', error.message || 'Failed to load profile', undefined, {
-        icon: <Danger size={32} color="#EF4444" variant="Bold" />,
-        type: 'destructive',
-      });
+      // Only show alert if it's not a tailored empty state scenario or if it's a critical error
+      // But for now, keeping it simple
     } finally {
       setLoading(false);
+      setRefreshing(false);
       isFetchingRef.current = false;
     }
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    triggerRefetch(); // Ensure next focus also fetches if needed, or just to sync store
+    fetchProfile(true); // Force fetch
+    if (activeTab === 'My Posts') fetchTabData('My Posts'); // Refresh posts too
+  }, [token, activeTab]);
 
   const fetchTabData = async (tab: TabType) => {
     if (!token) return;
@@ -140,13 +151,16 @@ export default function Profile() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchProfile();
+      // Fetch if requested by store OR if we don't have data yet
+      if (shouldRefetch || !profileData) {
+        fetchProfile();
+      }
       
       // Cleanup function
       return () => {
         isFetchingRef.current = false;
       };
-    }, [token]), // Hanya depend pada token, bukan profileData
+    }, [token, shouldRefetch, profileData]), 
   );
 
   // Fetch tab data ketika tab berubah
@@ -284,7 +298,12 @@ export default function Profile() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#0F0F0F]" edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8BD65E" />
+        }
+      >
         <View className="bg-white px-4 pt-2 dark:bg-[#0F0F0F]">
           {/* AppBar */}
           <View className="mb-6 flex-row items-center justify-between">

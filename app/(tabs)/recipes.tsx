@@ -13,9 +13,10 @@ import {
   UIManager,
   Keyboard,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { showAlert } from '@/lib/utils/globalAlert';
-import { Danger, TickCircle, ArrowLeft, Filter, SearchNormal1, CloseCircle, Book, AddCircle, Calendar, Box, ShoppingCart, Add, Clock, TextalignJustifycenter, Timer1, Flash, Health } from 'iconsax-react-native';
+import { Danger, TickCircle, ArrowLeft, Filter, SearchNormal1, CloseCircle, Book, AddCircle, Calendar, Box, ShoppingCart, Add, Clock, TextalignJustifycenter, Timer1, Flash, Heart } from 'iconsax-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Recipe } from '@/lib/types';
@@ -440,188 +441,20 @@ export default function SavedRecipesScreen() {
         </View>
 
         <View className="flex-row items-center gap-3">
-          {viewMode === 'list' && (
-            <TouchableOpacity
-              onPress={toggleSortMenu}
-              className={`h-10 w-10 items-center justify-center rounded-full ${
-                showSortMenu
-                  ? 'bg-[#8BD65E]'
-                  : 'bg-gray-100 dark:bg-gray-800'
-              }`}
-            >
-              <Filter
-                size={20}
-                color={showSortMenu ? 'white' : isDark ? '#9CA3AF' : '#666'}
-                variant="Outline"
-              />
-            </TouchableOpacity>
-          )}
+
 
           <TouchableOpacity
             onPress={toggleSearch}
-            className={`h-10 w-10 items-center justify-center rounded-full ${
-              showSearch
-                ? 'bg-red-500'
-                : 'bg-gray-100 dark:bg-gray-800'
-            }`}
+            className="h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"
           >
-            {showSearch ? (
-              <CloseCircle size={20} color="white" variant="Bold" />
-            ) : (
-              <SearchNormal1 size={20} color={isDark ? '#9CA3AF' : '#666'} variant="Outline" />
-            )}
+            <SearchNormal1 size={20} color={isDark ? '#9CA3AF' : '#666'} variant="Outline" />
           </TouchableOpacity>
 
           <ProButton />
         </View>
       </View>
 
-      {/* Sort & Filter Menu */}
-      {showSortMenu && viewMode === 'list' && (
-        <View className="mx-5 mb-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-          {/* Sort By */}
-          <Text className="mb-2 font-visby-bold text-xs text-gray-500 dark:text-gray-400">
-            SORT BY
-          </Text>
-          <View className="mb-4 flex-row flex-wrap gap-2">
-            {/* Recent */}
-            <TouchableOpacity
-              onPress={() => {
-                setSortBy('recent');
-                Haptics.selectionAsync();
-              }}
-              className={`flex-row items-center rounded-full px-4 py-2 ${
-                sortBy === 'recent'
-                  ? 'bg-blue-500'
-                  : 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-              }`}
-            >
-              <Clock
-                size={16}
-                color={sortBy === 'recent' ? 'white' : isDark ? '#9CA3AF' : '#6B7280'}
-              />
-              <Text
-                className={`ml-1 font-visby-bold text-xs ${
-                  sortBy === 'recent' ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                Recent
-              </Text>
-            </TouchableOpacity>
 
-            {/* Name */}
-            <TouchableOpacity
-              onPress={() => {
-                setSortBy('name');
-                Haptics.selectionAsync();
-              }}
-              className={`flex-row items-center rounded-full px-4 py-2 ${
-                sortBy === 'name'
-                  ? 'bg-blue-500'
-                  : 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-              }`}
-            >
-              <TextalignJustifycenter
-                size={16}
-                color={sortBy === 'name' ? 'white' : isDark ? '#9CA3AF' : '#6B7280'}
-              />
-              <Text
-                className={`ml-1 font-visby-bold text-xs ${
-                  sortBy === 'name' ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                Name
-              </Text>
-            </TouchableOpacity>
-
-            {/* Cook Time */}
-            <TouchableOpacity
-              onPress={() => {
-                setSortBy('time');
-                Haptics.selectionAsync();
-              }}
-              className={`flex-row items-center rounded-full px-4 py-2 ${
-                sortBy === 'time'
-                  ? 'bg-blue-500'
-                  : 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-              }`}
-            >
-              <Timer1
-                size={16}
-                color={sortBy === 'time' ? 'white' : isDark ? '#9CA3AF' : '#6B7280'}
-              />
-              <Text
-                className={`ml-1 font-visby-bold text-xs ${
-                  sortBy === 'time' ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                Cook Time
-              </Text>
-            </TouchableOpacity>
-
-            {/* Calories */}
-            <TouchableOpacity
-              onPress={() => {
-                setSortBy('calories');
-                Haptics.selectionAsync();
-              }}
-              className={`flex-row items-center rounded-full px-4 py-2 ${
-                sortBy === 'calories'
-                  ? 'bg-blue-500'
-                  : 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-              }`}
-            >
-              <Flash
-                size={16}
-                color={sortBy === 'calories' ? 'white' : isDark ? '#9CA3AF' : '#6B7280'}
-              />
-              <Text
-                className={`ml-1 font-visby-bold text-xs ${
-                  sortBy === 'calories' ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`}
-              >
-                Calories
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Filter By Difficulty */}
-          <Text className="mb-2 font-visby-bold text-xs text-gray-500 dark:text-gray-400">
-            DIFFICULTY
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {[
-              { value: 'all', label: 'All' },
-              { value: 'Easy', label: 'Easy' },
-              { value: 'Medium', label: 'Medium' },
-              { value: 'Hard', label: 'Hard' },
-            ].map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                onPress={() => {
-                  setFilterDifficulty(option.value as any);
-                  Haptics.selectionAsync();
-                }}
-                className={`rounded-full px-4 py-2 ${
-                  filterDifficulty === option.value
-                    ? 'bg-orange-500'
-                    : 'border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
-                }`}
-              >
-                <Text
-                  className={`font-visby-bold text-xs ${
-                    filterDifficulty === option.value
-                      ? 'text-white'
-                      : 'text-gray-600 dark:text-gray-300'
-                  }`}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
 
       {/* Quick Actions */}
       <View className="mb-4 flex-row justify-around px-5 pb-2 pt-1">
@@ -641,7 +474,7 @@ export default function SavedRecipesScreen() {
 
         <TouchableOpacity onPress={() => router.push('/nutrition-analyzer')} className="items-center">
           <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-900/20">
-            <Health size={24} color="#8B5CF6" variant="Bold" />
+            <Heart size={24} color="#8B5CF6" variant="Bold" />
           </View>
           <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
             Nutrition
@@ -658,30 +491,132 @@ export default function SavedRecipesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* SEARCH BAR */}
-      {showSearch && (
-        <View className="px-5 pb-4">
-          <View className="h-12 flex-row items-center rounded-xl border border-gray-100 bg-white px-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <SearchNormal1 size={20} color="#9CA3AF" />
-            <TextInput
-              placeholder="Search recipes..."
-              placeholderTextColor="#9CA3AF"
-              className="ml-2 h-full flex-1 font-visby text-base text-gray-900 dark:text-white"
-              autoFocus
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <CloseCircle size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
+      {/* SEARCH OVERLAY MODAL */}
+      <Modal
+        visible={showSearch}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={toggleSearch}
+      >
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#0F0F0F]">
+          <View className="flex-row items-center border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+             {/* Back Button */}
+            <TouchableOpacity onPress={toggleSearch} className="mr-3">
+              <ArrowLeft size={24} color={isDark ? 'white' : 'black'} />
+            </TouchableOpacity>
+
+            {/* Search Input */}
+            <View className="flex-1 flex-row items-center rounded-xl bg-gray-100 px-4 py-3 dark:bg-gray-800">
+              <SearchNormal1 size={20} color="#9CA3AF" />
+              <TextInput
+                placeholder="Search recipes..."
+                placeholderTextColor="#9CA3AF"
+                className="ml-2 h-full flex-1 font-visby text-base text-gray-900 dark:text-white"
+                autoFocus
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <CloseCircle size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
-      )}
+
+          {/* Filters in Search Modal */}
+          <View className="border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+               {/* Sort Options */}
+               <View className="mr-4 flex-row gap-2 border-r border-gray-100 pr-4 dark:border-gray-800">
+                  <TouchableOpacity
+                    onPress={() => { setSortBy('recent'); Haptics.selectionAsync(); }}
+                    className={`rounded-full border px-3 py-1.5 ${sortBy === 'recent' ? 'get-blue-500 border-blue-500 bg-blue-500' : 'border-gray-200 bg-transparent dark:border-gray-700'}`}
+                  >
+                    <Text className={`font-visby-bold text-xs ${sortBy === 'recent' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>Recent</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { setSortBy('name'); Haptics.selectionAsync(); }}
+                    className={`rounded-full border px-3 py-1.5 ${sortBy === 'name' ? 'border-blue-500 bg-blue-500' : 'border-gray-200 bg-transparent dark:border-gray-700'}`}
+                  >
+                    <Text className={`font-visby-bold text-xs ${sortBy === 'name' ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>Name</Text>
+                  </TouchableOpacity>
+               </View>
+               
+               {/* Difficulty Options */}
+               {[
+                  { value: 'all', label: 'All Diff' },
+                  { value: 'Easy', label: 'Easy' },
+                  { value: 'Medium', label: 'Med' },
+                  { value: 'Hard', label: 'Hard' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => {
+                      setFilterDifficulty(option.value as any);
+                      Haptics.selectionAsync();
+                    }}
+                    className={`rounded-full border px-3 py-1.5 ${
+                      filterDifficulty === option.value
+                        ? 'border-orange-500 bg-orange-500'
+                        : 'border-gray-200 bg-transparent dark:border-gray-700'
+                    }`}
+                  >
+                    <Text
+                      className={`font-visby-bold text-xs ${
+                        filterDifficulty === option.value
+                          ? 'text-white'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+          </View>
+
+          {/* Search Results */}
+            <FlatList
+            data={filteredRecipes}
+            keyExtractor={(item) => item.id || Math.random().toString()}
+            renderItem={({ item }) => (
+                <RecipeCard
+                recipe={item}
+                onPress={() => {
+                    setSelectedRecipe(item);
+                   // Optionally close search or keep it open
+                }}
+                onCollectionPress={() => {
+                    setRecipeForCollection(item);
+                    setCollectionSelectorVisible(true);
+                }}
+                onDelete={(id) => {
+                    setRecipeToDelete(id);
+                    setRecipeTitleToDelete(item.title);
+                    setDeleteRecipeAlertVisible(true);
+                }}
+                onShare={handleShareRecipe}
+                />
+            )}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10 }}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled" 
+            ListEmptyComponent={
+                <View className="mt-20 items-center justify-center opacity-70">
+                    <SearchNormal1 size={64} color="#ccc" />
+                    <Text className="mt-4 font-visby-bold text-lg text-gray-500 dark:text-gray-400">
+                        {searchQuery ? 'No recipes found' : 'Start typing to search'}
+                    </Text>
+                </View>
+            }
+            />
+        </SafeAreaView>
+      </Modal>
 
       {/* VIEW CONTENT */}
-      {viewMode === 'collections' && !searchQuery ? (
+      {viewMode === 'collections' ? (
         <ScrollView className="flex-1 px-5 pt-2">
           <View className="flex-row flex-wrap justify-between pb-10">
             {recipeGroups.map((collection, index) => (
@@ -734,7 +669,7 @@ export default function SavedRecipesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
-          // ListFooterComponent={renderFooter}
+         // ListFooterComponent={renderFooter}
           ListEmptyComponent={renderEmpty}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"

@@ -31,7 +31,11 @@ export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComm
       : post.content.substring(0, MAX_TEXT_LENGTH) + '...';
 
   return (
-    <View className="mx-4 mb-4 overflow-hidden rounded-3xl border border-black/15 bg-white">
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => onPress?.(post.id)}
+      className="mx-4 mb-4 overflow-hidden rounded-3xl border border-black/15 bg-white"
+    >
       {/* Header */}
       <View className="flex-row items-center justify-between p-4 pb-3">
         <View className="flex-1 flex-row items-center">
@@ -151,6 +155,6 @@ export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComm
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };

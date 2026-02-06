@@ -26,6 +26,7 @@ import { useRecipeStorage } from '@/lib/hooks/useRecipeStorage';
 import { CustomAlertModal } from '@/components/CustomAlertModal';
 import { CustomCameraModal } from '@/components/CustomCameraModal';
 import { PostService } from '@/lib/services/postService';
+import { useProfileStore } from '@/lib/store/profileStore';
 
 export default function GenerateScreen() {
   // Dependencies
@@ -200,6 +201,7 @@ export default function GenerateScreen() {
                 onPress={async () => {
                   try {
                     await PostService.publishRecipe(recipe);
+                    useProfileStore.getState().triggerRefetch();
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     toastRef.current?.show('Published to Community Feed!', 'success');
                     showAlert('Success', 'Your recipe is now live on the Community Feed! 🌍');

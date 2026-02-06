@@ -16,8 +16,11 @@ import { NutritionAnalyzerService, NutritionInfo } from '@/lib/services/nutritio
 import { showAlert } from '@/lib/utils/globalAlert';
 import { Danger, TickCircle, Health, InfoCircle } from 'iconsax-react-native';
 
+import { useColorScheme } from 'nativewind';
+
 export default function NutritionAnalyzerScreen() {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
   const [analyzing, setAnalyzing] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [nutrition, setNutrition] = useState<NutritionInfo | null>(null);
@@ -90,13 +93,13 @@ export default function NutritionAnalyzerScreen() {
   };
 
   return (
-    <Container className="bg-[#F9FAFB]" noPadding>
+    <Container className="bg-white dark:bg-[#0F0F0F]" noPadding>
       {/* Header */}
-      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-5 py-4">
+      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-5 py-4 dark:border-gray-800 dark:bg-[#0F0F0F]">
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
+          <Ionicons name="arrow-back" size={24} color={router.canGoBack() ? (colorScheme === 'dark' ? 'white' : 'black') : 'transparent'} />
         </TouchableOpacity>
-        <Text className="font-visby-bold text-xl text-gray-900">Nutrition Analyzer 🔬</Text>
+        <Text className="font-visby-bold text-xl text-gray-900 dark:text-white">Nutrition Analyzer 🔬</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -104,21 +107,21 @@ export default function NutritionAnalyzerScreen() {
         {/* Upload Section */}
         {!imageUri && (
           <View className="mt-10 items-center">
-            <View className="mb-6 h-32 w-32 items-center justify-center rounded-[40px] bg-blue-50 shadow-sm">
-              <Health size={56} color="#3B82F6" variant="Bold" />
+            <View className="mb-6 h-32 w-32 items-center justify-center rounded-[40px] bg-green-50 shadow-sm dark:bg-green-900/20">
+              <Health size={56} color="#8BD65E" variant="Bold" />
             </View>
 
-            <Text className="mb-2 text-center font-visby-bold text-2xl text-gray-900">
+            <Text className="mb-2 text-center font-visby-bold text-2xl text-gray-900 dark:text-white">
               Analyze Food Nutrition
             </Text>
 
-            <Text className="mb-8 w-4/5 text-center font-visby text-base leading-6 text-gray-500">
+            <Text className="mb-8 w-4/5 text-center font-visby text-base leading-6 text-gray-500 dark:text-gray-400">
               Take a photo or upload an image of your food to get instant AI-powered nutrition analysis
             </Text>
 
             <TouchableOpacity
               onPress={() => setIsCameraVisible(true)}
-              className="mb-3 w-full flex-row items-center justify-center rounded-3xl bg-[#3B82F6] py-4 shadow-lg shadow-blue-200 active:scale-95"
+              className="mb-3 w-full flex-row items-center justify-center rounded-3xl bg-[#8BD65E] py-4 shadow-lg shadow-green-200 active:scale-95"
             >
               <Ionicons name="camera" size={24} color="white" style={{ marginRight: 8 }} />
               <Text className="font-visby-bold text-lg text-white">Take Photo</Text>
@@ -126,10 +129,10 @@ export default function NutritionAnalyzerScreen() {
 
             <TouchableOpacity
               onPress={handlePickImage}
-              className="w-full flex-row items-center justify-center rounded-3xl border-2 border-blue-200 bg-white py-4 active:scale-95"
+              className="w-full flex-row items-center justify-center rounded-3xl border-2 border-green-200 bg-white py-4 active:scale-95 dark:border-green-800 dark:bg-gray-800"
             >
-              <Ionicons name="images" size={24} color="#3B82F6" style={{ marginRight: 8 }} />
-              <Text className="font-visby-bold text-lg text-blue-600">Choose from Gallery</Text>
+              <Ionicons name="images" size={24} color="#8BD65E" style={{ marginRight: 8 }} />
+              <Text className="font-visby-bold text-lg text-green-600 dark:text-green-400">Choose from Gallery</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -142,11 +145,11 @@ export default function NutritionAnalyzerScreen() {
               className="mb-6 h-48 w-full rounded-2xl"
               resizeMode="cover"
             />
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text className="mt-4 font-visby-bold text-lg text-gray-700">
+            <ActivityIndicator size="large" color="#8BD65E" />
+            <Text className="mt-4 font-visby-bold text-lg text-gray-700 dark:text-gray-300">
               Analyzing nutrition...
             </Text>
-            <Text className="mt-2 text-center font-visby text-gray-500">
+            <Text className="mt-2 text-center font-visby text-gray-500 dark:text-gray-400">
               AI is examining your food image
             </Text>
           </View>
@@ -165,8 +168,8 @@ export default function NutritionAnalyzerScreen() {
             </View>
 
             {/* Food Name & Serving */}
-            <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-              <Text className="mb-1 font-visby-bold text-2xl text-gray-900">
+            <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+              <Text className="mb-1 font-visby-bold text-2xl text-gray-900 dark:text-white">
                 {nutrition.foodName}
               </Text>
               <Text className="font-visby text-sm text-gray-500">
@@ -180,10 +183,10 @@ export default function NutritionAnalyzerScreen() {
             </View>
 
             {/* Health Score */}
-            <View className="mb-4 overflow-hidden rounded-2xl bg-white shadow-sm">
+            <View className="mb-4 overflow-hidden rounded-2xl bg-white shadow-sm dark:bg-gray-800">
               <View className="flex-row items-center justify-between p-4">
                 <View className="flex-1">
-                  <Text className="mb-1 font-visby-bold text-lg text-gray-900">
+                  <Text className="mb-1 font-visby-bold text-lg text-gray-900 dark:text-white">
                     Health Score
                   </Text>
                   <Text className="font-visby text-sm text-gray-500">
@@ -207,14 +210,14 @@ export default function NutritionAnalyzerScreen() {
             </View>
 
             {/* Main Nutrition Facts */}
-            <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-              <Text className="mb-4 font-visby-bold text-lg text-gray-900">
+            <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+              <Text className="mb-4 font-visby-bold text-lg text-gray-900 dark:text-white">
                 Nutrition Facts
               </Text>
 
-              <View className="mb-3 rounded-xl bg-blue-50 p-3">
-                <Text className="mb-1 font-visby text-xs text-gray-500">CALORIES</Text>
-                <Text className="font-visby-bold text-3xl text-blue-600">
+              <View className="mb-3 rounded-xl bg-green-50 p-3 dark:bg-green-900/20">
+                <Text className="mb-1 font-visby text-xs text-gray-500 dark:text-gray-400">CALORIES</Text>
+                <Text className="font-visby-bold text-3xl text-green-600">
                   {nutrition.calories}
                 </Text>
               </View>
@@ -231,8 +234,8 @@ export default function NutritionAnalyzerScreen() {
 
             {/* Dietary Flags */}
             {nutrition.dietaryFlags && nutrition.dietaryFlags.length > 0 && (
-              <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-                <Text className="mb-3 font-visby-bold text-lg text-gray-900">
+              <View className="mb-4 rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800">
+                <Text className="mb-3 font-visby-bold text-lg text-gray-900 dark:text-white">
                   Dietary Information
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
@@ -266,7 +269,7 @@ export default function NutritionAnalyzerScreen() {
             )}
 
             {/* Recommendations */}
-            <View className="mb-4 rounded-2xl bg-gradient-to-r from-purple-50 to-blue-50 p-4">
+            <View className="mb-4 rounded-2xl bg-gradient-to-r from-purple-50 to-green-50 p-4">
               <Text className="mb-3 font-visby-bold text-sm text-purple-700">
                 Health Recommendations
               </Text>
@@ -283,7 +286,7 @@ export default function NutritionAnalyzerScreen() {
                 setImageUri(null);
                 setNutrition(null);
               }}
-              className="mb-6 rounded-3xl bg-blue-600 py-4 active:scale-95"
+              className="mb-6 rounded-3xl bg-[#8BD65E] py-4 active:scale-95"
             >
               <Text className="text-center font-visby-bold text-lg text-white">
                 Analyze Another Food
@@ -318,8 +321,8 @@ function NutritionRow({
   color: string;
 }) {
   return (
-    <View className="flex-row items-center justify-between border-b border-gray-100 pb-3">
-      <Text className="font-visby text-sm text-gray-700">{label}</Text>
+    <View className="flex-row items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
+      <Text className="font-visby text-sm text-gray-700 dark:text-gray-300">{label}</Text>
       <View className="flex-row items-baseline">
         <Text className="font-visby-bold text-lg" style={{ color }}>
           {value}

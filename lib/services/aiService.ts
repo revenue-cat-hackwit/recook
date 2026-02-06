@@ -1,5 +1,7 @@
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 import { Message } from '@/lib/types';
+import { TokenStorage } from './apiClient';
+import { decodeJwt } from '@/lib/utils/jwt';
 
 export const AIService = {
   /**
@@ -7,8 +9,24 @@ export const AIService = {
    */
   async sendMessage(messages: Message[]) {
     // 1. Get User Token
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token || supabaseAnonKey;
+    let token: string | null = null;
+    
+    // PRIORITY 1: Try Custom JWT first
+    const customToken = await TokenStorage.getToken();
+    if (customToken) {
+        token = customToken;
+    } 
+
+    // PRIORITY 2: Fallback to Supabase session
+    if (!token) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        token = sessionData.session?.access_token || null;
+    }
+
+    // PRIORITY 3: Fallback to Anon Key (for public endpoints, though AI likely needs auth)
+    if (!token) {
+        token = supabaseAnonKey;
+    }
 
     // Filter messages
     const apiMessages = messages.map((msg) => ({

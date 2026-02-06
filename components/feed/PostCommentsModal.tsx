@@ -23,6 +23,7 @@ interface PostCommentsModalProps {
   onClose: () => void;
   postId: string | null;
   onCommentAdded?: () => void;
+  autoFocus?: boolean; // New prop
 }
 
 export const PostCommentsModal: React.FC<PostCommentsModalProps> = ({
@@ -30,6 +31,7 @@ export const PostCommentsModal: React.FC<PostCommentsModalProps> = ({
   onClose,
   postId,
   onCommentAdded,
+  autoFocus = false,
 }) => {
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -39,12 +41,22 @@ export const PostCommentsModal: React.FC<PostCommentsModalProps> = ({
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+  const inputRef = React.useRef<TextInput>(null);
 
   useEffect(() => {
     if (visible && postId) {
       fetchPostDetail();
+      if (autoFocus) {
+         // Tiny delay to ensure modal animation doesn't glitch focus
+         setTimeout(() => {
+            inputRef.current?.focus();
+         }, 300);
+      }
     }
-  }, [visible, postId]);
+  }, [visible, postId, autoFocus]);
+
+  // ... (rest of component: fetchPostDetail, handleSubmitComment, handleClose, if !visible)
+
 
   const fetchPostDetail = async () => {
     if (!postId) return;
@@ -238,6 +250,7 @@ export const PostCommentsModal: React.FC<PostCommentsModalProps> = ({
                 style={{ paddingBottom: Math.max(insets.bottom, 16) }}
               >
                 <TextInput
+                  ref={inputRef}
                   value={newComment}
                   onChangeText={setNewComment}
                   placeholder="Write a comment..."

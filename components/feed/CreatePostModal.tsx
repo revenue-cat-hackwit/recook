@@ -9,7 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
-  Alert,
+  // Alert, // Removed native Alert import
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -18,6 +18,7 @@ import { useColorScheme } from 'nativewind';
 import { Camera, Gallery, CloseCircle } from 'iconsax-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { UploadService } from '@/lib/services/uploadService';
+import { showAlert } from '@/lib/utils/globalAlert';
 
 interface CreatePostModalProps {
   visible: boolean;
@@ -41,7 +42,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
   const handleSubmit = async () => {
     if (!content.trim() || isSubmitting) {
-      Alert.alert('Oops!', 'Please write something to share!');
+      showAlert('Oops!', 'Please write something to share!');
       return;
     }
 
@@ -54,7 +55,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error creating post:', error);
-      Alert.alert('Error', 'Failed to create post. Please try again!');
+      showAlert('Error', 'Failed to create post. Please try again!');
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +77,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       if (sourceType === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'We need camera permission to take photos.');
+          showAlert('Permission Required', 'We need camera permission to take photos.');
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -88,7 +89,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Required', 'We need permission to access your photo library.');
+          showAlert('Permission Required', 'We need permission to access your photo library.');
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
@@ -106,7 +107,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again!');
+      showAlert('Error', 'Failed to select image. Please try again!');
     }
   };
 
@@ -126,13 +127,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       
       if (response.success && response.data.url) {
         setImageUrl(response.data.url);
-        Alert.alert('Success!', 'Photo uploaded successfully!');
+        showAlert('Success!', 'Photo uploaded successfully!');
       } else {
         throw new Error('Upload failed');
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image. Please try again!');
+      showAlert('Error', 'Failed to upload image. Please try again!');
       setSelectedImage(null);
     } finally {
       setIsUploading(false);
@@ -144,27 +145,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     setSelectedImage(null);
   };
 
-  const showImageOptions = () => {
-    Alert.alert(
-      'Choose Image Source',
-      'Where would you like to get the photo from?',
-      [
-        {
-          text: 'Camera',
-          onPress: () => pickImage('camera'),
-        },
-        {
-          text: 'Gallery',
-          onPress: () => pickImage('gallery'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
+
 
   return (
     <Modal
@@ -252,17 +233,31 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             )}
 
             {/* Add Image Button */}
+            {/* Add Image Options */}
             {!selectedImage && !imageUrl && !isUploading && (
-              <TouchableOpacity
-                onPress={showImageOptions}
-                className="mt-4 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 dark:border-gray-700"
-                disabled={isSubmitting}
-              >
-                <Gallery size={28} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
-                <Text className="ml-3 font-visby-demibold text-base text-gray-600 dark:text-gray-400">
-                  Add Photo
-                </Text>
-              </TouchableOpacity>
+              <View className="mt-4 flex-row gap-4">
+                <TouchableOpacity
+                  onPress={() => pickImage('camera')}
+                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 dark:border-gray-700"
+                  disabled={isSubmitting}
+                >
+                  <Camera size={24} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
+                  <Text className="ml-2 font-visby-demibold text-base text-gray-600 dark:text-gray-400">
+                    Camera
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => pickImage('gallery')}
+                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 dark:border-gray-700"
+                  disabled={isSubmitting}
+                >
+                  <Gallery size={24} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
+                  <Text className="ml-2 font-visby-demibold text-base text-gray-600 dark:text-gray-400">
+                    Gallery
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
 
             {/* Info Text */}

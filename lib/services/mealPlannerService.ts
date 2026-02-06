@@ -169,8 +169,7 @@ export const MealPlannerService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabaseAnonKey}`,
-          'X-Custom-Auth': token,
+          Authorization: `Bearer ${token}`,
           apikey: supabaseAnonKey,
         },
         body: JSON.stringify({

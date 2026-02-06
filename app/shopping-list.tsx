@@ -8,6 +8,7 @@ import { ShoppingItem } from '@/lib/types';
 import { PantryService, PantryItem } from '@/lib/services/pantryService';
 import * as Haptics from 'expo-haptics';
 import { CustomAlertModal } from '@/components/CustomAlertModal';
+import { showAlert } from '@/lib/utils/globalAlert';
 import { EditShoppingItemModal } from '@/components/shopping/EditShoppingItemModal';
 
 export default function ShoppingListScreen() {
@@ -212,7 +213,7 @@ export default function ShoppingListScreen() {
 
     // Show warning if item is in pantry with enough quantity
     if (pantryStatus.inPantry && pantryStatus.hasEnough) {
-      Alert.alert(
+      showAlert(
         'Already in Pantry',
         `You have ${pantryStatus.pantryQty} of "${newItemName.trim()}" in your pantry. Do you still want to add it to the shopping list?`,
         [

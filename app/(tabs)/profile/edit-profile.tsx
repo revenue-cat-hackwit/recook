@@ -1,6 +1,7 @@
 import { UserService } from '@/lib/services/userService';
 import { ProfileService } from '@/lib/services/profileService';
 import { useAuthStore } from '@/lib/store/authStore';
+import { useProfileStore } from '@/lib/store/profileStore';
 import { Ionicons } from '@expo/vector-icons';
 import { type ImagePickerAsset, launchImageLibraryAsync } from 'expo-image-picker';
 import { Stack, useNavigation, useRouter } from 'expo-router';
@@ -132,6 +133,9 @@ export default function EditProfileScreen() {
       // Reset fetch flag agar profile page bisa fetch data baru
       hasFetchedRef.current = false;
       
+      const { triggerRefetch } = useProfileStore.getState();
+      triggerRefetch();
+
       showAlert('Success', 'Profile updated successfully', undefined, {
         icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
       });
