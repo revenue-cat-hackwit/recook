@@ -28,32 +28,35 @@ import { useRouter } from 'expo-router';
 
 
 const ThinkingIndicator = () => {
-  const spinValue = useRef(new Animated.Value(0)).current;
+  const scaleValue = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.loop(
-      Animated.timing(spinValue, {
-        toValue: 1,
-        duration: 2000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
+      Animated.sequence([
+        Animated.timing(scaleValue, {
+          toValue: 1.2,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleValue, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
     ).start();
   }, []);
-
-  const spin = spinValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
 
   return (
     <View className="p-4 pb-8 pt-2">
       <View className="mb-2 flex-row items-center">
-        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+        <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
           <MagicStar size={24} color="#8BD65E" variant="Bold" />
         </Animated.View>
       </View>
-      <Text className="text-right font-visby text-xs text-gray-400">
+      <Text className="text-left font-visby text-xs text-gray-400">
         Cooki can make mistakes. Please double check responses.
       </Text>
     </View>
@@ -570,7 +573,7 @@ export default function Chatbot() {
             }}
             onScroll={Animated.event([], { useNativeDriver: false })}
             scrollEventThrottle={16}
-            ListHeaderComponent={loading ? <ThinkingIndicator /> : null}
+            ListFooterComponent={loading ? <ThinkingIndicator /> : null}
             ListEmptyComponent={
               <EmptyChat
                 onSuggestionPress={(text) => {

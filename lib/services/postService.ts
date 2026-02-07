@@ -36,6 +36,7 @@ const transformPost = async (rawPost: RawPost): Promise<Post> => {
         likesCount: rawPost.likes?.length || 0,
         commentsCount: rawPost.comments?.length || 0,
         isLiked: currentUserId ? rawPost.likes.includes(currentUserId) : false,
+        isFollowing: rawPost.isFollowing || false,
         createdAt: rawPost.createdAt,
         updatedAt: rawPost.updatedAt,
         comments: rawPost.comments?.map(comment => ({
@@ -70,9 +71,9 @@ export const PostService = {
      * GET /api/posts
      * Requires Authorization header with Bearer token
      */
-    async getPosts(page: number = 1, limit: number = 10): Promise<PostsResponse> {
+    async getPosts(page: number = 1, limit: number = 10, userId?: string): Promise<PostsResponse> {
         const response = await apiClient.get<RawPostsResponse>('/api/posts', {
-            params: { page, limit },
+            params: { page, limit, userId },
         });
         
         // Transform raw posts to expected format

@@ -720,10 +720,12 @@ export default function SavedRecipesScreen() {
       {/* Floating Action Button for New Recipe */}
       <TouchableOpacity
         onPress={handleStartManualCreate}
-        className="absolute bottom-6 right-6 z-50 h-16 w-16 items-center justify-center rounded-full bg-[#8BD65E] shadow-lg shadow-green-200 dark:shadow-none"
-        style={{ elevation: 5 }}
+        className="absolute bottom-6 right-6 z-50 flex-row items-center gap-2 rounded-full bg-[#8BD65E] px-5 py-4 shadow-lg shadow-green-200 dark:shadow-none"
+        activeOpacity={0.8}
+        style={{ elevation: 8 }}
       >
-        <Add size={36} color="white" />
+        <Add size={24} color="white" variant="Bold" />
+        <Text className="font-visby-bold text-base text-white">New Recipe</Text>
       </TouchableOpacity>
 
       {/* Toast for error/success notifications */}

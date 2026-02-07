@@ -5,15 +5,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { Post } from '@/lib/types/post';
 import { formatDistanceToNow } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
+import { useAuthStore } from '@/lib/store/authStore';
+import { useViewRecipeStore } from '@/lib/store/viewRecipeStore';
+import { Recipe } from '@/lib/types';
+import { Book, ArrowRight } from 'iconsax-react-native';
+import { useRouter } from 'expo-router';
 
 interface FeedPostCardProps {
   post: Post;
   onLike: (postId: string) => void;
   onComment: (postId: string) => void;
   onPress?: (postId: string) => void;
+  onFollow?: (userId: string, isFollowing: boolean) => void;
 }
 
-export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComment, onPress }) => {
+export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComment, onPress, onFollow }) => {
+  const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [showFullText, setShowFullText] = useState(false);
@@ -23,12 +31,36 @@ export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComm
     locale: localeId,
   });
 
+  // Smart Link Parsing
+  const jsonMatch = post.content.match(/\[recipe-json-start\]([\s\S]*?)\[recipe-json-end\]/);
+  let recipeData: Recipe | null = null;
+  if (jsonMatch) {
+    try {
+      recipeData = JSON.parse(jsonMatch[1]);
+      console.log('Parsed recipe data:', recipeData?.title);
+    } catch (e) {
+      console.warn('Failed to parse recipe JSON in post', e);
+    }
+  }
+
+  const oldMatch = post.content.match(/\[recipe:([^|]+)\|([^\]]+)\]/);
+  const oldRecipeId = oldMatch ? oldMatch[1] : null;
+  const oldRecipeTitle = oldMatch ? oldMatch[2] : null;
+
+  const cleanContent = post.content
+    .replace(/\[recipe-json-start\][\s\S]*?\[recipe-json-end\]/, '')
+    .replace(/\[recipe:[^\]]+\]/g, '')
+    .trim();
+
+  const linkedRecipeTitle = recipeData?.title || oldRecipeTitle;
+  const hasLinkedRecipe = !!recipeData || !!oldRecipeId;
+
   const MAX_TEXT_LENGTH = 150;
-  const shouldTruncate = post.content.length > MAX_TEXT_LENGTH;
+  const shouldTruncate = cleanContent.length > MAX_TEXT_LENGTH;
   const displayText =
     showFullText || !shouldTruncate
-      ? post.content
-      : post.content.substring(0, MAX_TEXT_LENGTH) + '...';
+      ? cleanContent
+      : cleanContent.substring(0, MAX_TEXT_LENGTH) + '...';
 
   return (
     <TouchableOpacity
@@ -59,6 +91,28 @@ export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComm
             </Text>
           </View>
         </View>
+
+        {/* Follow Button */}
+        {currentUser?.id !== post.user.id && onFollow && (
+          <TouchableOpacity
+            onPress={() => onFollow(post.user.id, !!post.isFollowing)}
+            className={`rounded-full px-4 py-1.5 ${
+              post.isFollowing
+                ? 'border border-gray-300 bg-transparent dark:border-gray-600'
+                : 'bg-[#8BD65E]'
+            }`}
+          >
+            <Text
+              className={`font-visby-bold text-xs ${
+                post.isFollowing
+                  ? 'text-gray-600 dark:text-gray-300'
+                  : 'text-white'
+              }`}
+            >
+              {post.isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Content */}
@@ -75,6 +129,31 @@ export const FeedPostCard: React.FC<FeedPostCardProps> = ({ post, onLike, onComm
             </Text>
           )}
         </Text>
+        
+        {/* Linked Recipe Card */}
+        {hasLinkedRecipe && (
+          <TouchableOpacity 
+            onPress={() => {
+                if (recipeData) {
+                    useViewRecipeStore.getState().setRecipe(recipeData);
+                    router.push('/recipe/shared');
+                } else if (oldRecipeId) {
+                    router.push(`/recipe/${oldRecipeId}`);
+                }
+            }}
+            className="mt-3 flex-row items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-900"
+            activeOpacity={0.8}
+          >
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-orange-800 mr-3 shadow-sm">
+              <Book size={20} color="#F97316" variant="Bold" />
+            </View>
+            <View className="flex-1">
+              <Text className="font-visby text-xs text-orange-600 dark:text-orange-400 mb-0.5">Linked Recipe</Text>
+              <Text className="font-visby-bold text-sm text-gray-900 dark:text-white" numberOfLines={1}>{linkedRecipeTitle}</Text>
+            </View>
+            <ArrowRight size={16} color="#F97316" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Image */}

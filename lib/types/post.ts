@@ -27,6 +27,7 @@ export interface RawPost {
     __v: number;
     likesCount?: number;
     commentsCount?: number;
+    isFollowing?: boolean;
 }
 
 export interface RawPostsResponse {
@@ -65,6 +66,7 @@ export interface Post {
     likesCount: number;
     commentsCount: number;
     isLiked: boolean;
+    isFollowing?: boolean; // Whether current user is following the post author
     createdAt: string;
     updatedAt: string;
     comments?: PostComment[];

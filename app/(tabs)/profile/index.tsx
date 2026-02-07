@@ -106,42 +106,54 @@ export default function Profile() {
     try {
       isFetchingRef.current = true;
       lastFetchTimeRef.current = now;
-      if (!force) setLoading(true); // Don't show full screen loader on pull-to-refresh
+      if (!force) setLoading(true); // Only show full screen loader if not pull-to-refresh
 
       // Fetch profile from new API
       const response = await ProfileService.getProfile();
       setProfileData(response.data.user);
-      markRefetched();
     } catch (error: any) {
       console.error('Failed to fetch profile:', error);
-      // Only show alert if it's not a tailored empty state scenario or if it's a critical error
-      // But for now, keeping it simple
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      markRefetched();
+      if (!force) setLoading(false);
       isFetchingRef.current = false;
     }
   };
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    triggerRefetch(); // Ensure next focus also fetches if needed, or just to sync store
-    fetchProfile(true); // Force fetch
-    if (activeTab === 'My Posts') fetchTabData('My Posts'); // Refresh posts too
+    triggerRefetch(); 
+    
+    try {
+      const promises = [fetchProfile(true)];
+      if (activeTab === 'My Posts') {
+        promises.push(fetchTabData('My Posts'));
+      } else if (activeTab === 'Reply') {
+        promises.push(fetchTabData('Reply'));
+      }
+      
+      await Promise.all(promises);
+    } catch(e) {
+      console.error("Refresh failed", e);
+    } finally {
+      setRefreshing(false);
+    }
   }, [token, activeTab]);
 
-  const fetchTabData = async (tab: TabType) => {
+  const fetchTabData = async (tab: TabType, explicitUserId?: string) => {
     if (!token) return;
 
     try {
       setLoadingPosts(true);
 
       if (tab === 'My Posts') {
-        const response = await PostService.getPosts();
-        // Filter posts by current user - use profileData ID or currentUser ID
-        const userId = profileData?.id || currentUser?.id;
-        const userPosts = response.data.posts.filter((post) => post.user.id === userId);
-        setMyPosts(userPosts);
+        // Use explicit userId if provided, otherwise fallback to profileData or currentUser
+        const userId = explicitUserId || profileData?.id || currentUser?.id;
+        
+        // Fetch posts filtered by userId from server
+        // Using page 1, default limit 10
+        const response = await PostService.getPosts(1, 10, userId);
+        setMyPosts(response.data.posts);
       } else if (tab === 'Reply') {
         const response = await PostService.getMyComments();
         setMyComments(response.data.comments);
@@ -155,31 +167,38 @@ export default function Profile() {
 
   useFocusEffect(
     useCallback(() => {
-      // Fetch if requested by store OR if we don't have data yet
-      if (shouldRefetch || !profileData) {
-        fetchProfile();
-      }
+      // Fetch data in parallel to avoid waterfall
+      const loadData = async () => {
+        const promises = [];
+        
+        if (shouldRefetch || !profileData) {
+          promises.push(fetchProfile());
+        }
+        
+        // Always fetch tab data on focus too if empty, or rely on activeTab effect?
+        // Let's fetch if empty or shouldRefetch. 
+        // Using currentUser.id is safe for initial load.
+        if (activeTab === 'My Posts' && (myPosts.length === 0 || shouldRefetch)) {
+           promises.push(fetchTabData('My Posts', currentUser?.id));
+        } else if (activeTab === 'Reply' && (myComments.length === 0 || shouldRefetch)) {
+           promises.push(fetchTabData('Reply'));
+        }
+
+        await Promise.all(promises);
+      };
       
-      // Cleanup function
+      loadData();
+      
       return () => {
         isFetchingRef.current = false;
       };
-    }, [token, shouldRefetch, profileData]), 
+    }, [token, shouldRefetch, profileData, activeTab, currentUser?.id]), 
   );
 
-  // Fetch tab data ketika tab berubah
+  // Fetch tab data when tab changes
   React.useEffect(() => {
-    if (profileData) {
-      fetchTabData(activeTab);
-    }
-  }, [activeTab]); // Hapus profileData dari dependencies
-
-  // Inisialisasi data tab saat pertama kali profileData tersedia
-  React.useEffect(() => {
-    if (profileData && activeTab === 'My Posts' && myPosts.length === 0) {
-      fetchTabData(activeTab);
-    }
-  }, [profileData]); // Hanya untuk inisialisasi awal
+    fetchTabData(activeTab);
+  }, [activeTab]);
 
   const userInitials = getInitials(profileData?.fullName, profileData?.username);
 

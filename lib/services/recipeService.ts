@@ -350,6 +350,38 @@ export const RecipeService = {
       throw new Error('Could not parse nutrition data');
     }
   },
+  async getRecipeById(id: string): Promise<Recipe | null> {
+    const { data, error } = await supabase
+      .from('user_recipes')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Get Recipe By ID Error:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      ingredients: data.ingredients,
+      steps: data.steps,
+      time_minutes: data.time_minutes,
+      difficulty: data.difficulty,
+      servings: data.servings,
+      calories_per_serving: data.calories_per_serving,
+      tips: data.tips,
+      sourceUrl: data.source_url,
+      imageUrl: data.image_url,
+      createdAt: data.created_at,
+      collections: data.collections || [],
+    };
+  },
+
   async findRecipeByTitle(title: string): Promise<Recipe | null> {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return null;

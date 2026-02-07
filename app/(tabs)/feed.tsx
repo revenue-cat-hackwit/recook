@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ProButton } from '@/components/ProButton';
 import { useProfileStore } from '@/lib/store/profileStore';
+import { UserFollowService } from '@/lib/services/userFollowService';
 
 export default function Feed() {
   const router = useRouter();
@@ -184,6 +185,33 @@ export default function Feed() {
     );
   }
 
+  const handleFollow = async (userId: string, isFollowing: boolean) => {
+    // 1. Optimistic Update
+    // Store previous posts for rollback
+    const previousPosts = [...posts];
+
+    // Update ALL posts from this user to reflect new follow status
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.user.id === userId
+          ? { ...post, isFollowing: !isFollowing }
+          : post
+      )
+    );
+
+    try {
+      // 2. Call API
+      await UserFollowService.toggleFollow(userId);
+      // Refresh profile counts if needed
+      triggerRefetch();
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      // 3. Rollback on Error
+      setPosts(previousPosts);
+      // Optional: Show error toast
+    }
+  };
+
   return (
     <View className="flex-1 bg-white dark:bg-[#0F0F0F]">
       <FlatList
@@ -196,6 +224,7 @@ export default function Feed() {
             onLike={handleLike}
             onComment={handleComment}
             onPress={handlePostPress}
+            onFollow={handleFollow}
           />
         )}
         refreshControl={

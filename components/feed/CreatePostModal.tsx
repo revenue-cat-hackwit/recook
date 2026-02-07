@@ -20,6 +20,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { UploadService } from '@/lib/services/uploadService';
 import { showAlert } from '@/lib/utils/globalAlert';
 
+import { CustomCameraModal } from '@/components/CustomCameraModal';
+import { RecipeSelectModal } from './RecipeSelectModal';
+import { Book } from 'iconsax-react-native';
+import { Recipe } from '@/lib/types';
+
 interface CreatePostModalProps {
   visible: boolean;
   onClose: () => void;
@@ -36,20 +41,35 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [isCameraVisible, setIsCameraVisible] = useState(false); 
+  const [isRecipeModalVisible, setIsRecipeModalVisible] = useState(false);
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
 
   const handleSubmit = async () => {
-    if (!content.trim() || isSubmitting) {
-      showAlert('Oops!', 'Please write something to share!');
+    // ... existing submit logic ...
+    const hasContent = content.trim().length > 0;
+    const hasRecipe = !!selectedRecipe;
+
+    if ((!hasContent && !hasRecipe) || isSubmitting) {
+      showAlert('Oops!', 'Please write something or attach a recipe!');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await onSubmit(content.trim(), imageUrl.trim() || undefined);
+      let finalContent = content.trim();
+      if (selectedRecipe) {
+          // Use clear delimiters to avoid JSON syntax corruption
+          const recipeJson = JSON.stringify(selectedRecipe);
+          finalContent += `\n\n[recipe-json-start]${recipeJson}[recipe-json-end]`;
+      }
+
+      await onSubmit(finalContent, imageUrl.trim() || undefined);
       setContent('');
+      setSelectedRecipe(null);
       setImageUrl('');
       setSelectedImage(null);
       onClose();
@@ -66,39 +86,36 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       setContent('');
       setImageUrl('');
       setSelectedImage(null);
+      setSelectedRecipe(null);
       onClose();
     }
   };
 
+  const handleCameraCapture = async (uri: string) => {
+    setIsCameraVisible(false);
+    setSelectedImage(uri);
+    await uploadImage({ uri });
+  };
+
   const pickImage = async (sourceType: 'camera' | 'gallery') => {
     try {
-      let result;
-      
       if (sourceType === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          showAlert('Permission Required', 'We need camera permission to take photos.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
-      } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
+        // Use Custom Camera
+        setIsCameraVisible(true);
+        return;
+      }
+      
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
           showAlert('Permission Required', 'We need permission to access your photo library.');
           return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync({
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
           aspect: [4, 3],
           quality: 0.8,
-        });
-      }
+      });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
@@ -110,6 +127,16 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       showAlert('Error', 'Failed to select image. Please try again!');
     }
   };
+
+  // ... rest of the component ... 
+
+  // Inside return, add CustomCameraModal
+  // Inside return, add CustomCameraModal
+  const handleRecipeSelect = (recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+    setIsRecipeModalVisible(false);
+  };
+
 
   const uploadImage = async (asset: { uri: string; fileName?: string | null; mimeType?: string | null }) => {
     setIsUploading(true);
@@ -204,6 +231,26 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               {content.length}/1000
             </Text>
 
+            {/* Selected Recipe Card */}
+            {selectedRecipe && (
+              <View className="mt-4 flex-row items-center justify-between rounded-xl bg-orange-50 p-4 border border-orange-100 dark:bg-orange-900/20 dark:border-orange-800">
+                <View className="flex-row items-center flex-1">
+                   <View className="h-10 w-10 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-800 mr-3">
+                      <Book size={20} color="#F97316" variant="Bold" />
+                   </View>
+                   <View className="flex-1">
+                      <Text className="font-visby text-xs text-orange-600 dark:text-orange-400">Attached Recipe</Text>
+                      <Text className="font-visby-bold text-sm text-gray-900 dark:text-white" numberOfLines={1}>
+                          {selectedRecipe.title}
+                      </Text>
+                   </View>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedRecipe(null)} className="p-1">
+                    <Ionicons name="close" size={20} color="#F97316" />
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Image Preview */}
             {(selectedImage || imageUrl) && (
               <View className="relative mt-4 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800">
@@ -238,7 +285,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               <View className="mt-4 flex-row gap-4">
                 <TouchableOpacity
                   onPress={() => pickImage('camera')}
-                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 dark:border-gray-700"
+                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-4 dark:border-gray-700"
                   disabled={isSubmitting}
                 >
                   <Camera size={24} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
@@ -249,28 +296,29 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
                 <TouchableOpacity
                   onPress={() => pickImage('gallery')}
-                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 dark:border-gray-700"
+                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-4 dark:border-gray-700"
                   disabled={isSubmitting}
                 >
                   <Gallery size={24} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
-                  <Text className="ml-2 font-visby-demibold text-base text-gray-600 dark:text-gray-400">
+                  <Text className="ml-2 font-visby-demibold text-sm text-gray-600 dark:text-gray-400">
                     Gallery
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setIsRecipeModalVisible(true)}
+                  className="flex-1 flex-row items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-4 dark:border-gray-700"
+                  disabled={isSubmitting}
+                >
+                  <Book size={24} color={isDark ? '#9CA3AF' : '#6B7280'} variant="Bold" />
+                  <Text className="ml-2 font-visby-demibold text-sm text-gray-600 dark:text-gray-400">
+                    Recipe
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* Info Text */}
-            <View className="mt-6 rounded-xl bg-green-50 p-4 dark:bg-green-900/20">
-              <Text className="font-visby-demibold text-sm text-green-700 dark:text-green-400">
-                💡 Tips for Great Posts:
-              </Text>
-              <Text className="mt-2 font-visby text-xs leading-5 text-green-700 dark:text-green-400">
-                • Share your cooking experience{"\n"}
-                • Include recipes or cooking tips{"\n"}
-                • Don't forget to add a photo of your dish!
-              </Text>
-            </View>
+
           </ScrollView>
 
           {/* Submit Button */}
@@ -280,9 +328,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           >
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={!content.trim() || isSubmitting || isUploading}
+              disabled={(!content.trim() && !selectedRecipe) || isSubmitting || isUploading}
               className={`flex-row items-center justify-center rounded-full py-4 ${
-                !content.trim() || isSubmitting || isUploading
+                (!content.trim() && !selectedRecipe) || isSubmitting || isUploading
                   ? 'bg-gray-300 dark:bg-gray-700'
                   : 'bg-[#8BC34A]'
               }`}
@@ -302,6 +350,17 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           </View>
         </KeyboardAvoidingView>
       </View>
+      <CustomCameraModal
+        visible={isCameraVisible}
+        onClose={() => setIsCameraVisible(false)}
+        onPhotoTaken={handleCameraCapture}
+      />
+      
+      <RecipeSelectModal
+        visible={isRecipeModalVisible}
+        onClose={() => setIsRecipeModalVisible(false)}
+        onSelect={handleRecipeSelect}
+      />
     </Modal>
   );
 };
