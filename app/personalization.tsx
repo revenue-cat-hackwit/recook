@@ -56,7 +56,7 @@ export default function PersonalizationScreen() {
     try {
       setCheckingPersonalization(true);
       const result = await PersonalizationService.checkPersonalization();
-      
+
       if (result.success && result.data.hasPersonalization) {
         // User already has personalization data, redirect to feed
         console.log('✅ User has personalization, redirecting to feed');
@@ -75,59 +75,67 @@ export default function PersonalizationScreen() {
   };
 
   const fetchRefData = async () => {
+    const baseUrl = 'https://pxhoqlzgkyflqlaixzkv.supabase.co/storage/v1/object/public/onboarding_assets';
+
+    // Fallback data with images from Supabase storage
+    const fallbackCuisines = [
+      { name: 'Indonesia', image_path: `${baseUrl}/indonesian.png` },
+      { name: 'Italian', image_path: `${baseUrl}/italian.png` },
+      { name: 'Japanese', image_path: `${baseUrl}/japan.png` },
+      { name: 'Chinese', image_path: `${baseUrl}/chinese.png` },
+      { name: 'Thai', image_path: `${baseUrl}/Thai.png` },
+      { name: 'Korean', image_path: `${baseUrl}/Korean.png` },
+    ];
+    const fallbackTastePreferences = [
+      { name: 'Too Spicy', image_path: `${baseUrl}/spicy.png` },
+      { name: 'Strong Spices / Herbs', image_path: `${baseUrl}/herbs.png` },
+      { name: 'Too Sweet', image_path: `${baseUrl}/sweet.png` },
+      { name: 'Too Salty', image_path: `${baseUrl}/salty.png` },
+      { name: 'Oily / Fatty Food', image_path: `${baseUrl}/bitter.png` },
+      { name: 'Sour / Acidic', image_path: `${baseUrl}/sour.png` },
+    ];
+    const fallbackAllergies = [
+      { name: 'Peanuts', image_path: `${baseUrl}/peanut.png` },
+      { name: 'Seafood', image_path: `${baseUrl}/seafood.png` },
+      { name: 'Dairy / Lactose', image_path: `${baseUrl}/dairy.png` },
+      { name: 'Gluten', image_path: `${baseUrl}/gluten.png` },
+    ];
+    const fallbackEquipment = [
+      { name: 'Pressure Cooker', image_path: `${baseUrl}/pressure.png` },
+      { name: 'Oven', image_path: `${baseUrl}/oven.png` },
+      { name: 'Air Fryer', image_path: `${baseUrl}/airfryer.png` },
+      { name: 'Microwave', image_path: `${baseUrl}/microwave.png` },
+      { name: 'Steamer', image_path: `${baseUrl}/steamer.png` },
+      { name: 'Chopper', image_path: `${baseUrl}/chopper.png` },
+      { name: 'Mixer', image_path: `${baseUrl}/mixer.png` },
+      { name: 'Grill Pan', image_path: `${baseUrl}/grill.png` },
+    ];
+
     try {
       // Fetch cuisines with image paths
       const { data: cData } = await supabase.from('reference_cuisines').select('name, image_path');
-      if (cData) setCuisinesOpt(cData);
+      setCuisinesOpt(cData && cData.length > 0 ? cData : fallbackCuisines);
 
       // Fetch taste preferences with image paths
       const { data: tData } = await supabase
         .from('reference_taste_preferences')
         .select('name, image_path');
-      if (tData) setTastePreferencesOpt(tData);
+      setTastePreferencesOpt(tData && tData.length > 0 ? tData : fallbackTastePreferences);
 
       // Fetch allergies with image paths
       const { data: aData } = await supabase.from('reference_allergies').select('name, image_path');
-      if (aData) setAllergiesOpt(aData);
+      setAllergiesOpt(aData && aData.length > 0 ? aData : fallbackAllergies);
 
       // Fetch equipment with image paths
       const { data: eData } = await supabase.from('reference_equipment').select('name, image_path');
-      if (eData) setEquipmentOpt(eData);
+      setEquipmentOpt(eData && eData.length > 0 ? eData : fallbackEquipment);
     } catch (e) {
       console.error('Failed to fetch onboarding references', e);
-      // Fallback data (without images)
-      setCuisinesOpt([
-        { name: 'Indonesia', image_path: null },
-        { name: 'Italian', image_path: null },
-        { name: 'Japanese', image_path: null },
-        { name: 'Chinese', image_path: null },
-        { name: 'Thai', image_path: null },
-        { name: 'Korean', image_path: null },
-      ]);
-      setTastePreferencesOpt([
-        { name: 'Too Spicy', image_path: null },
-        { name: 'Strong Spices / Herbs', image_path: null },
-        { name: 'Too Sweet', image_path: null },
-        { name: 'Too Salty', image_path: null },
-        { name: 'Oily / Fatty Food', image_path: null },
-        { name: 'Sour / Acidic', image_path: null },
-      ]);
-      setAllergiesOpt([
-        { name: 'Peanuts', image_path: null },
-        { name: 'Seafood', image_path: null },
-        { name: 'Dairy / Lactose', image_path: null },
-        { name: 'Gluten', image_path: null },
-      ]);
-      setEquipmentOpt([
-        { name: 'Pressure Cooker', image_path: null },
-        { name: 'Oven', image_path: null },
-        { name: 'Air Fryer', image_path: null },
-        { name: 'Microwave', image_path: null },
-        { name: 'Steamer', image_path: null },
-        { name: 'Chopper', image_path: null },
-        { name: 'Mixer', image_path: null },
-        { name: 'Grill Pan', image_path: null },
-      ]);
+      // Use fallback data on error
+      setCuisinesOpt(fallbackCuisines);
+      setTastePreferencesOpt(fallbackTastePreferences);
+      setAllergiesOpt(fallbackAllergies);
+      setEquipmentOpt(fallbackEquipment);
     } finally {
       setLoading(false);
     }
@@ -163,7 +171,7 @@ export default function PersonalizationScreen() {
             try {
               // Reset Subscription Store (RevenueCat Logout)
               await useSubscriptionStore.getState().reset();
-              
+
               await signOut();
               router.replace('/(auth)/sign-in');
             } catch (error) {
@@ -193,13 +201,13 @@ export default function PersonalizationScreen() {
 
       // Save to backend API
       const result = await PersonalizationService.savePersonalization(personalizationData);
-      
+
       if (result.success) {
         console.log('Personalization saved:', result.data.personalization.id);
-        
+
         // Mark onboarding as complete in local state
         completeOnboarding();
-        
+
         showAlert(
           'Setup Complete!',
           'Your personalized cooking experience is ready',
@@ -208,7 +216,7 @@ export default function PersonalizationScreen() {
             icon: <TickCircle size={32} color="#10B981" variant="Bold" />,
           }
         );
-        
+
         router.replace('/(tabs)/feed');
       }
     } catch (error: any) {
@@ -380,8 +388,8 @@ export default function PersonalizationScreen() {
       {/* Header with Back Button and Logout */}
       <View className="flex-row items-center justify-between px-6 pb-6 pt-4">
         {currentStep > 1 ? (
-          <TouchableOpacity 
-            onPress={handleBack} 
+          <TouchableOpacity
+            onPress={handleBack}
             className="rounded-full bg-gray-100 p-2.5"
             activeOpacity={0.7}
           >
@@ -393,8 +401,8 @@ export default function PersonalizationScreen() {
 
         <StepIndicator currentStep={currentStep} totalSteps={4} />
 
-        <TouchableOpacity 
-          onPress={handleLogout} 
+        <TouchableOpacity
+          onPress={handleLogout}
           className="rounded-full bg-red-50 p-2.5"
           activeOpacity={0.7}
         >
@@ -402,8 +410,8 @@ export default function PersonalizationScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        className="flex-1 px-6" 
+      <ScrollView
+        className="flex-1 px-6"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
