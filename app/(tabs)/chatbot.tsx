@@ -531,30 +531,30 @@ export default function Chatbot() {
         }}
       />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
-      >
-        <View className="flex-1">
-          {/* Header with Hamburger Menu */}
-          <View className="flex-row items-center justify-between bg-white px-4 pb-3 pt-12">
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setHistoryDrawerVisible(true);
-              }}
-              className="rounded-full bg-gray-100 p-2"
-            >
-              <HambergerMenu size={24} color="#333" variant="Outline" />
-            </TouchableOpacity>
+      <View className="flex-1 bg-white">
+        {/* Header with Hamburger Menu - Fixed at Top */}
+        <View className="flex-row items-center justify-between bg-white px-4 pb-3 pt-12 border-b border-gray-200">
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setHistoryDrawerVisible(true);
+            }}
+            className="rounded-full bg-gray-100 p-2"
+          >
+            <HambergerMenu size={24} color="#333" variant="Outline" />
+          </TouchableOpacity>
 
-            <Text className="font-visby-bold text-xl text-[#8BD65E]">Cooki</Text>
+          <Text className="font-visby-bold text-xl text-[#8BD65E]">Cooki</Text>
 
-            <ProButton />
-          </View>
+          <ProButton />
+        </View>
 
-          <Animated.FlatList
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <FlatList
             ref={flatListRef}
             data={messages}
             renderItem={({ item }: { item: Message }) => (
@@ -567,42 +567,36 @@ export default function Chatbot() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{
               padding: 16,
-              paddingBottom: 180, // Maximum space for keyboard + input
-              backgroundColor: '#ffffff',
+              paddingBottom: 40,
               flexGrow: 1,
             }}
-            onScroll={Animated.event([], { useNativeDriver: false })}
-            scrollEventThrottle={16}
+            keyboardDismissMode="on-drag"
             ListFooterComponent={loading ? <ThinkingIndicator /> : null}
             ListEmptyComponent={
               <EmptyChat
                 onSuggestionPress={(text) => {
                   setInputText(text);
-                  // Trigger send after setting input text
                   setTimeout(() => sendMessage(), 100);
                 }}
               />
             }
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => {
-              // Auto scroll to bottom when new message
-              if(messages.length > 0) {
+              // Auto scroll to bottom when new message content is added
+              if (messages.length > 0) {
                  flatListRef.current?.scrollToEnd({ animated: true });
+              }
+            }}
+            onLayout={() => {
+              // Auto scroll to bottom when view size changes (e.g. keyboard opens/closes)
+              if (messages.length > 0) {
+                 flatListRef.current?.scrollToEnd({ animated: false });
               }
             }}
           />
 
-          {/* Floating Input Box */}
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: 'transparent', // Transparent background as requested
-              paddingBottom: Platform.OS === 'ios' ? 0 : 10,
-            }}
-          >
+          {/* Input Box - Stacked naturally at bottom */}
+          <View className="pb-2 bg-white">
             <ChatInput
               value={inputText}
               onChangeText={setInputText}
@@ -611,8 +605,8 @@ export default function Chatbot() {
               loading={loading}
             />
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </>
   );
 }

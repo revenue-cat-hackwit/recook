@@ -271,7 +271,7 @@ export default function PantryScreen() {
       setShowRecommendations(true);
       
       showAlert(
-        'Recipes Found! 🎉',
+        'Recipes Found!',
         `Generated ${recs.length} AI-powered recipes based on your pantry!`,
         undefined,
         {

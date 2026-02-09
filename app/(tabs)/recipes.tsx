@@ -457,38 +457,156 @@ export default function SavedRecipesScreen() {
 
 
       {/* Quick Actions */}
-      <View className="mb-4 flex-row justify-around px-5 pb-2 pt-1">
-        <TouchableOpacity onPress={() => router.push('/meal-planner')} className="items-center">
-          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-900/20">
-            <Calendar size={24} color="#F97316" />
-          </View>
-          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Planner</Text>
-        </TouchableOpacity>
+      <View className="mb-4 px-4 pt-4">
+        <View className="flex-row justify-around">
+          {/* Meal Planner */}
+          <TouchableOpacity 
+            onPress={() => router.push('/meal-planner')}
+            className="items-center"
+          >
+            <View 
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'white',
+                marginBottom: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View 
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#FFF4ED',
+                }}
+              >
+                <Calendar size={24} color="#F97316" variant="Bulk" />
+              </View>
+            </View>
+            <Text className="font-visby-bold text-xs text-gray-900 text-center">Planner</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/pantry')} className="items-center">
-          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/20">
-            <Box size={24} color="#8BD65E" />
-          </View>
-          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">Pantry</Text>
-        </TouchableOpacity>
+          {/* Pantry */}
+          <TouchableOpacity 
+            onPress={() => router.push('/pantry')}
+            className="items-center"
+          >
+            <View 
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'white',
+                marginBottom: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View 
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#F0FDF4',
+                }}
+              >
+                <Box size={24} color="#8BD65E" variant="Bulk" />
+              </View>
+            </View>
+            <Text className="font-visby-bold text-xs text-gray-900 text-center">Pantry</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/nutrition-analyzer')} className="items-center">
-          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-900/20">
-            <Heart size={24} color="#8B5CF6" variant="Bold" />
-          </View>
-          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
-            Nutrition
-          </Text>
-        </TouchableOpacity>
+          {/* Nutrition */}
+          <TouchableOpacity 
+            onPress={() => router.push('/nutrition-analyzer')}
+            className="items-center"
+          >
+            <View 
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'white',
+                marginBottom: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View 
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#FAF5FF',
+                }}
+              >
+                <Heart size={24} color="#A78BFA" variant="Bulk" />
+              </View>
+            </View>
+            <Text className="font-visby-bold text-xs text-gray-900 text-center">Nutrition</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/shopping-list')} className="items-center">
-          <View className="mb-1 h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-            <ShoppingCart size={24} color="#3B82F6" />
-          </View>
-          <Text className="font-visby-bold text-xs text-gray-700 dark:text-gray-300">
-            Shop List
-          </Text>
-        </TouchableOpacity>
+          {/* Shopping List */}
+          <TouchableOpacity 
+            onPress={() => router.push('/shopping-list')}
+            className="items-center"
+          >
+            <View 
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 18,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'white',
+                marginBottom: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View 
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#EFF6FF',
+                }}
+              >
+                <ShoppingCart size={24} color="#60A5FA" variant="Bulk" />
+              </View>
+            </View>
+            <Text className="font-visby-bold text-xs text-gray-900 text-center">Shop List</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SEARCH OVERLAY MODAL */}
