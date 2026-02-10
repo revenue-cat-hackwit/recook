@@ -7,36 +7,21 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "24.11.1",
-      "npm": {
-        "install": {
-          "args": ["--legacy-peer-deps"]
-        }
-      }
+      "node": "24.11.1"
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "node": "24.11.1",
-      "npm": {
-        "install": {
-          "args": ["--legacy-peer-deps"]
-        }
-      }
+      "node": "24.11.1"
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       },
-      "node": "24.11.1",
-      "npm": {
-        "install": {
-          "args": ["--legacy-peer-deps"]
-        }
-      }
+      "node": "24.11.1"
     }
   },
   "submit": {
