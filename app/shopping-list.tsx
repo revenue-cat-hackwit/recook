@@ -275,17 +275,18 @@ export default function ShoppingListScreen() {
 
     return (
       <View
-        className={`mb-2 flex-row items-center border-b border-gray-100 py-3 ${
-          item.isChecked ? 'opacity-50' : ''
+        className={`mb-3 flex-row items-center rounded-2xl bg-white px-4 py-3.5 shadow-sm ${
+          item.isChecked ? 'opacity-60' : ''
         }`}
+        style={{ elevation: 2 }}
       >
         <TouchableOpacity onPress={() => handleToggle(item.id)} className="mr-3">
           <View
-            className={`h-5 w-5 items-center justify-center rounded border ${
-              item.isChecked ? 'border-primary bg-primary' : 'border-gray-300'
+            className={`h-6 w-6 items-center justify-center rounded-lg border-2 ${
+              item.isChecked ? 'border-[#8BD65E] bg-[#8BD65E]' : 'border-gray-300'
             }`}
           >
-            {item.isChecked && <Ionicons name="checkmark" size={14} color="white" />}
+            {item.isChecked && <Ionicons name="checkmark" size={16} color="white" />}
           </View>
         </TouchableOpacity>
 
@@ -294,7 +295,7 @@ export default function ShoppingListScreen() {
           <View className="flex-[3] pr-2">
             <View className="flex-row items-center gap-2">
               <Text
-                className={`flex-1 font-visby text-base ${
+                className={`flex-1 font-visby-demibold text-base ${
                   item.isChecked ? 'text-gray-400 line-through' : 'text-gray-900'
                 }`}
                 numberOfLines={2}
@@ -303,7 +304,7 @@ export default function ShoppingListScreen() {
               </Text>
               {pantryStatus.inPantry && (
                 <View
-                  className={`rounded-full px-2 py-0.5 ${
+                  className={`rounded-full px-2 py-1 ${
                     pantryStatus.hasEnough ? 'bg-green-100' : 'bg-orange-100'
                   }`}
                 >
@@ -320,7 +321,7 @@ export default function ShoppingListScreen() {
               )}
             </View>
             {item.fromRecipe && (
-              <Text className="text-[10px] text-gray-400" numberOfLines={1}>
+              <Text className="mt-0.5 text-[10px] text-gray-400" numberOfLines={1}>
                 {item.fromRecipe}
               </Text>
             )}
@@ -338,7 +339,7 @@ export default function ShoppingListScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => removeItem(item.id)} className="ml-2 p-2">
-          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
     );
@@ -347,9 +348,9 @@ export default function ShoppingListScreen() {
   return (
     <SafeAreaView className="flex-1 bg-[#F9FAFB]">
       {/* Header */}
-      <View className="flex-row items-center justify-between border-b border-gray-50 bg-white px-6 py-4">
+      <View className="flex-row items-center justify-between border-b border-gray-100 bg-white px-6 py-4 shadow-sm">
         <TouchableOpacity onPress={() => router.back()} className="-ml-2 p-2">
-          <Ionicons name="arrow-back" size={24} color="black" />
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text className="font-visby-bold text-xl text-gray-900">Shopping List 🛒</Text>
         <TouchableOpacity onPress={handleClear} disabled={items.length === 0}>
@@ -362,14 +363,14 @@ export default function ShoppingListScreen() {
       </View>
 
       {/* Add Item Input - Split Columns */}
-      <View className="flex-row items-center gap-2 border-b border-gray-100 bg-white px-4 py-4 shadow-sm">
+      <View className="flex-row items-center gap-2 border-b border-gray-100 bg-white px-4 py-4">
         {/* Name Input */}
         <TextInput
           value={newItemName}
           onChangeText={setNewItemName}
           placeholder="Item Name"
           placeholderTextColor="#9CA3AF"
-          className="flex-[3] rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-visby text-sm text-gray-900"
+          className="flex-[3] rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 font-visby text-sm text-gray-900"
           onSubmitEditing={() => {}}
           returnKeyType="next"
         />
@@ -381,7 +382,7 @@ export default function ShoppingListScreen() {
           placeholder="Qty"
           placeholderTextColor="#9CA3AF"
           keyboardType="numeric"
-          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center font-visby text-sm text-gray-900"
+          className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-2 py-2.5 text-center font-visby text-sm text-gray-900"
         />
 
         {/* Unit Input */}
@@ -390,7 +391,7 @@ export default function ShoppingListScreen() {
           onChangeText={setNewItemUnit}
           placeholder="Unit"
           placeholderTextColor="#9CA3AF"
-          className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center font-visby text-sm text-gray-900"
+          className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-2 py-2.5 text-center font-visby text-sm text-gray-900"
           onSubmitEditing={handleAddManual}
           returnKeyType="done"
         />
@@ -398,9 +399,10 @@ export default function ShoppingListScreen() {
         <TouchableOpacity
           onPress={handleAddManual}
           disabled={!newItemName.trim()}
-          className={`h-10 w-10 items-center justify-center rounded-full ${newItemName.trim() ? 'bg-black' : 'bg-gray-200'}`}
+          className={`h-11 w-11 items-center justify-center rounded-full shadow-md ${newItemName.trim() ? 'bg-[#8BD65E]' : 'bg-gray-200'}`}
+          style={newItemName.trim() ? { elevation: 4 } : {}}
         >
-          <Ionicons name="add" size={24} color={newItemName.trim() ? 'white' : '#999'} />
+          <Ionicons name="add" size={26} color={newItemName.trim() ? 'white' : '#999'} />
         </TouchableOpacity>
       </View>
 
@@ -500,34 +502,36 @@ export default function ShoppingListScreen() {
 
       {items.length === 0 ? (
         <View className="flex-1 items-center justify-center px-10">
-          <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-gray-100">
-            <Ionicons name="cart-outline" size={40} color="#9CA3AF" />
+          <View className="mb-6 h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-[#8BD65E]/20 to-[#8BC34A]/10">
+            <Ionicons name="cart-outline" size={56} color="#8BD65E" />
           </View>
-          <Text className="mb-2 font-visby-bold text-xl text-gray-900">Basket Empty</Text>
-          <Text className="text-center font-visby text-gray-500">
+          <Text className="mb-2 font-visby-bold text-2xl text-gray-900">Basket Empty</Text>
+          <Text className="text-center font-visby text-base text-gray-500">
             Your shopping list is currently empty. Go to your saved recipes and add ingredients!
           </Text>
           <TouchableOpacity
             onPress={() => router.back()}
-            className="mt-8 rounded-full bg-black px-8 py-3"
+            className="mt-8 rounded-full bg-[#8BD65E] px-8 py-3.5 shadow-lg"
+            style={{ elevation: 4 }}
           >
-            <Text className="font-visby-bold text-white">Go to Recipes</Text>
+            <Text className="font-visby-bold text-base text-white">Go to Recipes</Text>
           </TouchableOpacity>
         </View>
       ) : sortedItems.length === 0 ? (
         <View className="flex-1 items-center justify-center px-10">
-          <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-gray-100">
-            <Ionicons name="funnel-outline" size={40} color="#9CA3AF" />
+          <View className="mb-6 h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-[#8BD65E]/20 to-[#8BC34A]/10">
+            <Ionicons name="funnel-outline" size={56} color="#8BD65E" />
           </View>
-          <Text className="mb-2 font-visby-bold text-xl text-gray-900">No Items Found</Text>
-          <Text className="text-center font-visby text-gray-500">
+          <Text className="mb-2 font-visby-bold text-2xl text-gray-900">No Items Found</Text>
+          <Text className="text-center font-visby text-base text-gray-500">
             No ingredients from &quot;{selectedRecipe}&quot;. Try selecting a different recipe.
           </Text>
           <TouchableOpacity
             onPress={() => setSelectedRecipe(null)}
-            className="mt-8 rounded-full bg-[#8BD65E] px-8 py-3"
+            className="mt-8 rounded-full bg-[#8BD65E] px-8 py-3.5 shadow-lg"
+            style={{ elevation: 4 }}
           >
-            <Text className="font-visby-bold text-white">Show All Items</Text>
+            <Text className="font-visby-bold text-base text-white">Show All Items</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -535,7 +539,7 @@ export default function ShoppingListScreen() {
           data={sortedItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />
       )}
